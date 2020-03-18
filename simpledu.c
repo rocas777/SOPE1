@@ -40,7 +40,7 @@ long int seekdirec(char* currentdir, int depth);
 int createProcess(char* currentdir, int depth);
 void printTags();
 long int sizeAttribution(struct stat* temp);
-long int dereferenceLink(char* workTable);
+long int dereferenceLink(char* workTable, int depth);
 
 // Function bodies:
 
@@ -50,7 +50,7 @@ long int dereferenceLink(char* workTable);
 bool bigBFirst=false;
 bool smallBFirst=false;
 
-long int dereferenceLink(char* workTable){
+long int dereferenceLink(char* workTable, int depth){
     struct stat status;
     long int sizeRep;
 
@@ -58,7 +58,10 @@ long int dereferenceLink(char* workTable){
     readlink(workTable, megaPath, MAX_SIZE - 1);
     if( !lstat(megaPath, &status) ){
         sizeRep =  sizeAttribution(&status);
-        printf("%ld\t%s\n", sizeRep, workTable);
+        if( depth > 0 ){
+            //printf("[%d]\t", depth);
+            printf("%ld\t%s\n", sizeRep, workTable);
+        }
         return sizeRep;
     }
     else{
@@ -184,13 +187,17 @@ long int seekdirec(char* currentdir, int depth){
                             printf("    [INFO] Directory '%s' is a symbolic link ....... OK!\n", workTable);
                         if( tags.dereference_C == 0 ){
                             // Only considers the file's own size
-                                if( tags.allFiles_C )
-                                    printf("%ld\t%s\n", sizeAttribution(&status), workTable);
+                                if( tags.allFiles_C ){                                    
+                                    if( depth > 0 ){
+                                        //printf("[%d]\t", depth);
+                                        printf("%ld\t%s\n", sizeAttribution(&status), workTable);
+                                    }
+                                }                                
                                 size += sizeAttribution(&status);
                         }
                         else{
                             // Considers the referenced file!
-                                size += dereferenceLink(workTable);
+                                size += dereferenceLink(workTable, depth);
                         }   
                     }
                     // If it is a regular file:
@@ -198,8 +205,12 @@ long int seekdirec(char* currentdir, int depth){
                         if(VERBOSE)
                             printf("    [INFO] Directory '%s' is a regular file ....... OK!\n", workTable);                        
                         size += sizeAttribution(&status); 
-                        if(tags.allFiles_C)
-                            printf("%ld\t%s\n", sizeAttribution(&status), workTable);
+                        if(tags.allFiles_C){
+                            if( depth > 0 ){
+                                //printf("[%d]\t", depth);
+                                printf("%ld\t%s\n", sizeAttribution(&status), workTable);
+                            }
+                        }
                     }
                 }
                 else{
