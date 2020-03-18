@@ -45,6 +45,11 @@ long int dereferenceLink(char* workTable);
 // Function bodies:
 
 /* Accesses the link */
+
+
+bool bigBFirst=false;
+bool smallBFirst=false;
+
 long int dereferenceLink(char* workTable){
     struct stat status;
     long int sizeRep;
@@ -79,10 +84,10 @@ long int sizeAttribution(struct stat* temp){
 
     long int value;
 
-    if( tags.bytesDisplay_C ){
+    if( tags.bytesDisplay_C && !smallBFirst){
         value = temp->st_size;
     }
-    else if( tags.blockSize_C == 0 ){
+    else if( tags.blockSize_C == 0 && !bigBFirst){
         value = ( (temp->st_blocks * BLOCK_SIZE_STAT) / BLOCK_SIZE_PRINT );
     }
     else{
@@ -218,8 +223,6 @@ int main(int argc, char *argv[]){
     char directoryLine[MAX_SIZE] = DIRECTORY;
     tags.maxDepth_C = CUSTOM_INF;
     tags.countLink_C = 1;
-    bool bigBFirst=false;
-    bool smallBFirst=false;
 
     // Set up flags
     for(int i = 1; i < argc; i++){
