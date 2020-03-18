@@ -46,9 +46,7 @@ long int dereferenceLink(char* workTable, int depth);
 
 /* Accesses the link */
 
-
-bool bigBFirst=false;
-bool smallBFirst=false;
+int blockSize=512;
 
 long int dereferenceLink(char* workTable, int depth){
     struct stat status;
@@ -85,19 +83,24 @@ void printTags(){
 /* Attributes sizes based on the activated tags. */
 long int sizeAttribution(struct stat* temp){
 
-    long int value;
+    float value;
 
-    if( tags.bytesDisplay_C && !smallBFirst){
-        value = temp->st_size;
-    }
-    else if( tags.blockSize_C == 0 && !bigBFirst){
-        value = ( (temp->st_blocks * BLOCK_SIZE_STAT) / BLOCK_SIZE_PRINT );
+    if(tags.bytesDisplay_C){
+    	value = (temp->st_size) ;
+    	value/=tags.blockSize_C;
+
+    	int out=value;
+    	if(value>out)
+	value++;
     }
     else{
-        value = ( (temp->st_blocks * BLOCK_SIZE_STAT) / tags.blockSize_C );
-    }
+	value = (temp->st_blocks * BLOCK_SIZE_STAT) ;
+    	value/=tags.blockSize_C;
 
-    //printf("    [NOTE] The file returned with size %ld\n", value);
+    	int out=value;
+    	if(value>out)
+	value++;
+    }
     return value;
 }
 
@@ -234,6 +237,7 @@ int main(int argc, char *argv[]){
     char directoryLine[MAX_SIZE] = DIRECTORY;
     tags.maxDepth_C = CUSTOM_INF;
     tags.countLink_C = 1;
+    tags.blockSize_C = BLOCK_SIZE_STAT;
 
     // Set up flags
     for(int i = 1; i < argc; i++){
@@ -242,9 +246,8 @@ int main(int argc, char *argv[]){
             tags.allFiles_C = 1;
         }
         else if( strcmp(argv[i], "-b") == 0 || strcmp(argv[i], "--bytes") == 0 ){
-            tags.bytesDisplay_C = 1;
-	    if(!bigBFirst)
-		smallBFirst=true;
+            tags.blockSize_C = 1;
+	    tags.bytesDisplay_C=1;
         }
         else if( strcmp(argv[i], "-B") == 0 || strncmp(argv[i], "--block-size=", 13) == 0 || (strstr(argv[i], "-B")) != NULL || (strstr(argv[i], "--block-size=")) != NULL){
             if( strcmp(argv[i], "-B") == 0 ){
@@ -263,8 +266,6 @@ int main(int argc, char *argv[]){
 		temp+=13;
                 tags.blockSize_C = atoi(temp);
 	    }
-	    if(!smallBFirst)
-		bigBFirst=true;
         }
         else if( strcmp(argv[i], "-l") == 0 || strcmp(argv[i], "--count-links") == 0 ){
             // Do thing
