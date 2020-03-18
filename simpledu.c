@@ -84,10 +84,10 @@ long int sizeAttribution(struct stat* temp){
 
     long int value;
 
-    if( tags.bytesDisplay_C && !smallBFirst){
+    if( tags.bytesDisplay_C && !bigBFirst){
         value = temp->st_size;
     }
-    else if( tags.blockSize_C == 0 && !bigBFirst){
+    else if( tags.blockSize_C == 0 && !smallBFirst){
         value = ( (temp->st_blocks * BLOCK_SIZE_STAT) / BLOCK_SIZE_PRINT );
     }
     else{
