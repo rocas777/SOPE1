@@ -87,11 +87,6 @@ long int sizeAttribution(struct stat* temp){
 
     if(tags.bytesDisplay_C){
     	value = (temp->st_size) ;
-    	value/=tags.blockSize_C;
-
-    	int out=value;
-    	if(value>out)
-	value++;
     }
     else{
 	value = (temp->st_blocks * BLOCK_SIZE_STAT) ;
@@ -137,6 +132,21 @@ int createProcess(char* currentdir, int depth){
     }
 
     return n; 
+}
+
+void print(long int size,char* workTable){
+	if(tags.bytesDisplay_C){
+		float value=size;
+    		value/=tags.blockSize_C;
+    		int out=value;
+    		if(value>out)
+		value++;
+		long int temp_out=value;
+        	printf("%ld\t%s\n", temp_out, workTable);
+	}
+	else{
+        	printf("%ld\t%s\n", size, workTable);
+	}    
 }
 
 /* Reads all files in a given directory and displays identically the way 'du' does */
@@ -193,7 +203,7 @@ long int seekdirec(char* currentdir, int depth){
                                 if( tags.allFiles_C ){                                    
                                     if( depth > 0 ){
                                         //printf("[%d]\t", depth);
-                                        printf("%ld\t%s\n", sizeAttribution(&status), workTable);
+                                        print(sizeAttribution(&status), workTable);
                                     }
                                 }                                
                                 size += sizeAttribution(&status);
@@ -211,7 +221,7 @@ long int seekdirec(char* currentdir, int depth){
                         if(tags.allFiles_C){
                             if( depth > 0 ){
                                 //printf("[%d]\t", depth);
-                                printf("%ld\t%s\n", sizeAttribution(&status), workTable);
+                                print(sizeAttribution(&status), workTable);
                             }
                         }
                     }
@@ -226,7 +236,18 @@ long int seekdirec(char* currentdir, int depth){
     closedir(d);
     strcpy(workTable, currentdir);
     if( depth >= 0 ){
-        printf("%ld\t%s\n", size, workTable);
+	if(tags.bytesDisplay_C){
+		float value=size;
+    		value/=tags.blockSize_C;
+    		int out=value;
+    		if(value>out)
+		value++;
+		long int temp_out=value;
+        	printf("%ld\t%s\n", temp_out, workTable);
+	}
+	else{
+        	printf("%ld\t%s\n", size, workTable);
+	}    
     }
 
     return size;
