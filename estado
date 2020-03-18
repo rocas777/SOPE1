@@ -1,0 +1,11 @@
+Como disse no email, já tenho um ficheiro com alguma parte das coisas feitas. Mas isso não implica que esteja tudo feito. Ainda temos de "moer" algumas partes do código em procura de certas falhas (aka: Debugging). 
+
+Outro aspeto que já mencionei, é o facto do programa imprimir, usando o comando usado na avaliação: (./a.out . -a -b -L || echo $?) | sort -k2 > testeT_simpledu.txt  <--- Isso de forma errada. Sinceramente, não entendo, nem consigo entender. Era suposto apenas imprimir o que está no terminal.
+
+Algumas coisas que faltam (para além de corrigir o erro crítico acima, que, acreditem ou não, nem o nosso Prof das práticas consegue - Vamos ter que fazer milagres meus caros):
+
+ - Interrupção pelo utilizador (em funcionalidades Adicionais -> Nem sei se é obrigatório);
+ - Modificar a função 'sizeAttribution()' para considerar também o caso quando as flags -b e -B <n> estão ambas ativas; -> Brincar um pouco com o 'du' deve ajudar em algo
+ - Debugging a fundo com vários ficheiros e diretórios. 
+
+Re-envio o ficheiro atual para terem uma ideia.
