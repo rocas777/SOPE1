@@ -9,3 +9,13 @@ Algumas coisas que faltam (para além de corrigir o erro crítico acima, que, ac
  - Debugging a fundo com vários ficheiros e diretórios. 
 
 Re-envio o ficheiro atual para terem uma ideia.
+
+////Requisitos Arquiteturais
+falta nos meter quando o sinal (ctrl+c) SIGINT é carregado, deve aparecer uma mensagem a dizer se quer terminar ou não. e mandar SIGTERM ou SIGCONT de acordo.
+
+////Geração de registos de execução
+Isto é um log. Cria-se um ficheiro com a logs das funções e sinais.
+É neste formato:
+instant –pid –action –info
+ta no moodle o que cada quer dizer.
+mas sempre que acontece alguma action (CREATE, EXIT, RECV_SIGNAL, SEND_SIGNAL, RECV_PIPE, SEND_PIPE e ENTRY) deve adicionar uma fila ao ficheiro.
