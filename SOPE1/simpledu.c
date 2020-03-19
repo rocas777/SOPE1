@@ -48,8 +48,7 @@ long int sizeAttribution(struct stat *temp);
 long int dereferenceLink(char *workTable, int depth);
 void sigint_handler(int sig);
 void init_sigaction();
-void sigint_handler_nothing(int sig);
-void init_sigaction_nothing();
+void init_sigaction_SIGIGN();
 void add_thread(pid_t pid);
 
 // Function bodies:
@@ -157,13 +156,11 @@ void sigint_handler(int sig)
     }
 }
 
-void sigint_handler_nothing(int sig) {}
-
-void init_sigaction_nothing()
+void init_sigaction_SIGIGN()
 {
     // prepare the 'sigaction struct'
     struct sigaction action;
-    action.sa_handler = sigint_handler_nothing;
+    action.sa_handler = SIG_IGN;
     sigemptyset(&action.sa_mask);
     action.sa_flags = 0;
 
@@ -391,7 +388,7 @@ int main(int argc, char *argv[])
     threads = (pid_t *)malloc(sizeof(pid_t *));
     num_threads = 0;
 
-    init_sigaction_nothing();
+    init_sigaction_SIGIGN();
 
     // Set up flags
     for (int i = 1; i < argc; i++)
