@@ -21,6 +21,9 @@
 #define BLOCK_SIZE_STAT 512
 #define BLOCK_SIZE_PRINT 1024
 
+int num_threads; // number of threads;
+pid_t *threads;  // Array of pid of created threads
+
 /* Global variables: Used the dictate the flags */
 
 typedef struct
@@ -112,21 +115,60 @@ long int sizeAttribution(struct stat *temp)
 
 void sigint_handler(int sig)
 {
-    // kill(0, SIGSTOP);
+    if (num_threads = !0)
+    {
+        for (int n = 0; n < num_threads; n++)
+        {
+            kill(threads[n], SIGSTOP);
+        }
+    }
+
     int i = -1;
     while (i != 0 && i != 1)
     {
         printf("0 - Continue \n 1 - Terminate Program\n");
         scanf("%d", &i);
     }
+
     if (i == 0)
     {
-        kill(0, SIGCONT);
+        if (num_threads = !0)
+        {
+            for (int n = 0; n < num_threads; n++)
+            {
+                kill(threads[n], SIGCONT);
+            }
+        }
     }
     else
     {
-        kill(0, SIGKILL);
+        if (num_threads = !0)
+        {
+            for (int n = 0; n < num_threads; n++)
+            {
+                kill(threads[n], SIGKILL);
+            }
+        }
+        kill(getpid(), SIGKILL);
     }
+}
+
+void add_thread(pid_t pid)
+{
+    threads[num_threads] = pid;
+    num_threads++;
+}
+
+void init_signal()
+{
+    // prepare the 'sigaction struct'
+    struct sigaction action;
+    action.sa_handler = sigint_handler;
+    sigemptyset(&action.sa_mask);
+    action.sa_flags = 0;
+
+    // install the handler
+    sigaction(SIGINT, &action, NULL);
 }
 
 /* Creates a process. */
@@ -149,18 +191,18 @@ int createProcess(char *currentdir, int depth)
         exit(2);
     }
     else if (pid > 0)
-    { /* pai */
-        // prepare the 'sigaction struct'
-        struct sigaction action;
-        action.sa_handler = sigint_handler;
-        sigemptyset(&action.sa_mask);
-        action.sa_flags = 0;
-
-        // install the handler
-        sigaction(SIGINT, &action, NULL);
-
+    {                 /* pai */
         close(fd[1]); /* fecha lado emissor do pipe */
-        wait(NULL);
+
+        init_signal();
+
+        // if (num_threads != 0)
+        // {
+        add_thread(pid);
+        // }
+        add_thread(wait(NULL));
+
+        // wait(NULL);
         read(fd[0], digitsre, DIGITS_MAX);
         n = atoi(digitsre);
         close(fd[0]); /* fecha lado receptor do pipe */
@@ -318,6 +360,7 @@ long int seekdirec(char *currentdir, int depth)
         }
     }
     sleep(2);
+
     return size;
 }
 
@@ -328,6 +371,9 @@ int main(int argc, char *argv[])
     tags.maxDepth_C = CUSTOM_INF;
     tags.countLink_C = 1;
     tags.blockSize_C = BLOCK_SIZE_STAT;
+
+    threads = (pid_t *)malloc(sizeof(pid_t *));
+    num_threads = 0;
 
     // Set up flags
     for (int i = 1; i < argc; i++)
