@@ -47,6 +47,10 @@ void printTags();
 long int sizeAttribution(struct stat *temp);
 long int dereferenceLink(char *workTable, int depth);
 void sigint_handler(int sig);
+void init_sigaction();
+void sigint_handler_nothing(int sig);
+void init_sigaction_nothing();
+void add_thread(pid_t pid);
 
 // Function bodies:
 
@@ -153,13 +157,21 @@ void sigint_handler(int sig)
     }
 }
 
-void add_thread(pid_t pid)
+void sigint_handler_nothing(int sig) {}
+
+void init_sigaction_nothing()
 {
-    threads[num_threads] = pid;
-    num_threads++;
+    // prepare the 'sigaction struct'
+    struct sigaction action;
+    action.sa_handler = sigint_handler_nothing;
+    sigemptyset(&action.sa_mask);
+    action.sa_flags = 0;
+
+    // install the handler
+    sigaction(SIGINT, &action, NULL);
 }
 
-void init_signal()
+void init_sigaction()
 {
     // prepare the 'sigaction struct'
     struct sigaction action;
@@ -169,6 +181,12 @@ void init_signal()
 
     // install the handler
     sigaction(SIGINT, &action, NULL);
+}
+
+void add_thread(pid_t pid)
+{
+    threads[num_threads] = pid;
+    num_threads++;
 }
 
 /* Creates a process. */
@@ -194,12 +212,9 @@ int createProcess(char *currentdir, int depth)
     {                 /* pai */
         close(fd[1]); /* fecha lado emissor do pipe */
 
-        init_signal();
+        init_sigaction();
 
-        // if (num_threads != 0)
-        // {
         add_thread(pid);
-        // }
         add_thread(wait(NULL));
 
         // wait(NULL);
@@ -215,6 +230,7 @@ int createProcess(char *currentdir, int depth)
         sprintf(digitsre, "%d", n);
         write(fd[1], digitsre, strlen(digitsre));
         close(fd[1]); /* fecha lado emissor do pipe */
+
         exit(0);
     }
 
@@ -374,6 +390,8 @@ int main(int argc, char *argv[])
 
     threads = (pid_t *)malloc(sizeof(pid_t *));
     num_threads = 0;
+
+    init_sigaction_nothing();
 
     // Set up flags
     for (int i = 1; i < argc; i++)
