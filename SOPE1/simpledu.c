@@ -59,6 +59,18 @@ double timeSinceStartTime();
 
 // Function bodies:
 
+void printThreads(){
+    printf("\nList Threads:\n");
+    if (num_threads = !0)
+    {
+        for (int n = 0; n < num_threads; n++)
+        {
+            printf("%d - %d\t",n,threads[n]);
+        }
+    }
+    printf("\n");
+}
+
 /* Log prints*/
 //Returns time in miliseconds since begging of program
 double timeSinceStartTime()
@@ -184,7 +196,7 @@ void sigintHandler(int sig)
     pid_t pid = getpid();
 
     printActionInfoRECV_SIGNAL(&pid, "SIGINT");
-
+    printThreads();
     if (num_threads = !0)
     {
         for (int n = 0; n < num_threads; n++)
@@ -218,12 +230,12 @@ void sigintHandler(int sig)
         {
             for (int n = 0; n < num_threads; n++)
             {
-                printActionInfoSEND_SIGNAL(&threads[n], "SIGKILL");
-                kill(threads[n], SIGKILL);
+                printActionInfoSEND_SIGNAL(&threads[n], "SIGTERM");
+                kill(threads[n], SIGTERM);
             }
         }
-        printActionInfoSEND_SIGNAL(&pid, "SIGKILL");
-        kill(pid, SIGKILL);
+        printActionInfoSEND_SIGNAL(&pid, "SIGTERM");
+        kill(pid, SIGTERM);
     }
 }
 
@@ -255,6 +267,7 @@ void addThread(pid_t pid)
 {
     threads[num_threads] = pid;
     num_threads++;
+    printf("\nget thread -> %d\n", threads[num_threads - 1]);
 }
 
 void removeThread()
@@ -272,8 +285,6 @@ int createProcess(char *currentdir, int depth)
     char digitsre[DIGITS_MAX];
     memset(digitsre, '\0', DIGITS_MAX);
 
-    addThread(pid);
-
     if (pipe(fd) < 0)
     {
         fprintf(stderr, "pipe error\n");
@@ -281,7 +292,6 @@ int createProcess(char *currentdir, int depth)
     }
     if ((pid = fork()) < 0)
     {
-        removeThread();
         fprintf(stderr, "fork error\n");
         exit(2);
     }
@@ -290,9 +300,10 @@ int createProcess(char *currentdir, int depth)
         close(fd[1]); /* fecha lado emissor do pipe */
 
         // initSigaction();
-
-        // addThread(pid);
+ 
+        addThread(pid);
         // addThread(wait(NULL));
+        printThreads();
 
         wait(NULL);
         read(fd[0], digitsre, DIGITS_MAX);
@@ -302,7 +313,7 @@ int createProcess(char *currentdir, int depth)
     else
     {                 /* filho */
         close(fd[0]); /* fecha lado receptor do pipe */
-        // addThread(pid);
+        // addThread();
         initSigactionSIGIGN();
         depth--;
         n = seekdirec(currentdir, depth);
@@ -310,10 +321,10 @@ int createProcess(char *currentdir, int depth)
         write(fd[1], digitsre, strlen(digitsre));
         close(fd[1]); /* fecha lado emissor do pipe */
 
+        removeThread();
         exit(0);
     }
 
-    removeThread();
     return n;
 }
 
@@ -338,11 +349,6 @@ void print(long int size, char *workTable)
 /* Reads all files in a given directory and displays identically the way 'du' does */
 long int seekdirec(char *currentdir, int depth)
 {
-    // if (num_threads != 0)
-    // {
-    //     addThread(getpid());
-    // }
-
     if (VERBOSE)
         printf("    [INFO] Received address '%s' ....... OK!\n", currentdir);
 
@@ -460,7 +466,6 @@ long int seekdirec(char *currentdir, int depth)
         }
     }
     sleep(1);
-    // removeThread();
 
     return size;
 }
@@ -475,7 +480,7 @@ int main(int argc, char *argv[])
     tags.countLink_C = 1;
     tags.blockSize_C = BLOCK_SIZE_STAT;
 
-    threads = (pid_t *)malloc(sizeof(pid_t *));
+    threads = (pid_t *)malloc(sizeof(pid_t) * 1000);
     num_threads = 0;
 
     initSigaction();
