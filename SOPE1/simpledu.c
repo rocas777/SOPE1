@@ -3,6 +3,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/wait.h>
+#include <sys/time.h>
 #include <dirent.h>
 #include <string.h>
 #include <unistd.h>
@@ -23,6 +24,8 @@
 
 int num_threads; // number of threads;
 pid_t *threads;  // Array of pid of created threads
+
+struct timeval *startTime; //Time of beggining of program
 
 /* Global variables: Used the dictate the flags */
 
@@ -46,12 +49,27 @@ int createProcess(char *currentdir, int depth);
 void printTags();
 long int sizeAttribution(struct stat *temp);
 long int dereferenceLink(char *workTable, int depth);
-void sigint_handler(int sig);
-void init_sigaction();
-void init_sigaction_SIGIGN();
-void add_thread(pid_t pid);
+void sigintHandler(int sig);
+void initSigaction();
+void initSigactionSIGIGN();
+void addThread(pid_t pid);
+void removeThread();
+void printInsantPid(struct timeval *instant, pid_t *pid);
+double timeSinceStartTime(struct timeval *instant);
 
 // Function bodies:
+
+/* Log prints*/
+//Returns time in miliseconds since begging of program
+double timeSinceStartTime(struct timeval *instant)
+{
+    return (double)(instant->tv_sec - startTime->tv_sec) * 1000.0f + (instant->tv_usec - startTime->tv_usec) / 1000.0f;
+}
+
+void printInsantPid(struct timeval *instant, pid_t *pid)
+{
+    printf("%0.2f - %d", timeSinceStartTime(instant), *pid);
+}
 
 /* Accesses the link */
 
@@ -116,13 +134,18 @@ long int sizeAttribution(struct stat *temp)
     return value;
 }
 
-void sigint_handler(int sig)
+void sigintHandler(int sig)
 {
+    struct timeval instant;
+    pid_t pid;
+
     if (num_threads = !0)
     {
         for (int n = 0; n < num_threads; n++)
         {
+            gettimeofday(&instant, 0);
             kill(threads[n], SIGSTOP);
+            printInsantPid(&instant,&pid);
         }
     }
 
@@ -156,7 +179,7 @@ void sigint_handler(int sig)
     }
 }
 
-void init_sigaction_SIGIGN()
+void initSigactionSIGIGN()
 {
     // prepare the 'sigaction struct'
     struct sigaction action;
@@ -168,11 +191,11 @@ void init_sigaction_SIGIGN()
     sigaction(SIGINT, &action, NULL);
 }
 
-void init_sigaction()
+void initSigaction()
 {
     // prepare the 'sigaction struct'
     struct sigaction action;
-    action.sa_handler = sigint_handler;
+    action.sa_handler = sigintHandler;
     sigemptyset(&action.sa_mask);
     action.sa_flags = 0;
 
@@ -180,10 +203,16 @@ void init_sigaction()
     sigaction(SIGINT, &action, NULL);
 }
 
-void add_thread(pid_t pid)
+void addThread(pid_t pid)
 {
     threads[num_threads] = pid;
     num_threads++;
+}
+
+void removeThread()
+{
+    threads[num_threads] = 0;
+    num_threads--;
 }
 
 /* Creates a process. */
@@ -209,10 +238,10 @@ int createProcess(char *currentdir, int depth)
     {                 /* pai */
         close(fd[1]); /* fecha lado emissor do pipe */
 
-        init_sigaction();
+        initSigaction();
 
-        add_thread(pid);
-        add_thread(wait(NULL));
+        addThread(pid);
+        addThread(wait(NULL));
 
         // wait(NULL);
         read(fd[0], digitsre, DIGITS_MAX);
@@ -231,6 +260,7 @@ int createProcess(char *currentdir, int depth)
         exit(0);
     }
 
+    removeThread();
     return n;
 }
 
@@ -379,6 +409,8 @@ long int seekdirec(char *currentdir, int depth)
 
 int main(int argc, char *argv[])
 {
+    startTime = malloc(sizeof(struct timeval));
+    gettimeofday(startTime, 0);
 
     char directoryLine[MAX_SIZE] = DIRECTORY;
     tags.maxDepth_C = CUSTOM_INF;
@@ -388,7 +420,7 @@ int main(int argc, char *argv[])
     threads = (pid_t *)malloc(sizeof(pid_t *));
     num_threads = 0;
 
-    init_sigaction_SIGIGN();
+    initSigactionSIGIGN();
 
     // Set up flags
     for (int i = 1; i < argc; i++)
