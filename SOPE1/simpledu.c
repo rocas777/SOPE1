@@ -66,7 +66,7 @@ double timeSinceStartTime() //Returns time in miliseconds since begging of progr
     struct timeval instant;
     gettimeofday(&instant, 0);
 
-    return (double)(instant.tv_sec - startTime->tv_sec) * 1000.0f + (instant.tv_usec - startTime->tv_usec) / 1000.0f;
+    return (double)(instant.tv_sec - startTime->tv_secpgid) * 1000.0f + (instant.tv_usec - startTime->tv_usec) / 1000.0f;
 }
 
 void printInsantPid(pid_t *pid)
@@ -98,7 +98,7 @@ void printActionInfoSEND_SIGNAL(pid_t *pid, char *signal, pid_t destination)
     printf("SEND_SIGNAL - %s \"%d\"\n", signal, destination);
 }
 
-void printActionInfoRECV_PIP(pid_t *pid, int argc, char *argv[])
+void printActionInfoRECV_PIPE(pid_t *pid, int argc, char *argv[])
 {
     printInsantPid(pid);
     printf("RECV_PIP - ");
