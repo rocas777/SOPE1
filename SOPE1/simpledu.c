@@ -54,22 +54,61 @@ void initSigaction();
 void initSigactionSIGIGN();
 void addThread(pid_t pid);
 void removeThread();
-void printInsantPid(struct timeval *instant, pid_t *pid);
-double timeSinceStartTime(struct timeval *instant);
+void printInsantPid(pid_t *pid);
+double timeSinceStartTime();
 
 // Function bodies:
 
 /* Log prints*/
 //Returns time in miliseconds since begging of program
-double timeSinceStartTime(struct timeval *instant)
+double timeSinceStartTime()
 {
-    return (double)(instant->tv_sec - startTime->tv_sec) * 1000.0f + (instant->tv_usec - startTime->tv_usec) / 1000.0f;
+    struct timeval instant;
+    gettimeofday(&instant, 0);
+
+    return (double)(instant.tv_sec - startTime->tv_sec) * 1000.0f + (instant.tv_usec - startTime->tv_usec) / 1000.0f;
 }
 
-void printInsantPid(struct timeval *instant, pid_t *pid)
+void printInsantPid(pid_t *pid)
 {
-    printf("%0.2f - %d", timeSinceStartTime(instant), *pid);
+    printf("%0.2f - %d", timeSinceStartTime(), *pid);
 }
+
+void printActionInfoCREATE(pid_t *pid, int argc, char *argv[])
+{
+    printInsantPid(pid);
+}
+
+void printActionInfoEXIT(pid_t *pid, int argc, char *argv[])
+{
+    printInsantPid(pid);
+}
+
+void printActionInfoRECV_SIGNAL(pid_t *pid, int argc, char *argv[])
+{
+    printInsantPid(pid);
+}
+
+void printActionInfoSEND_SIGNAL(pid_t *pid, int argc, char *argv[])
+{
+    printInsantPid(pid);
+}
+
+void printActionInfoRECV_PIP(pid_t *pid, int argc, char *argv[])
+{
+    printInsantPid(pid);
+}
+
+void printActionInfoSEND_PIPE(pid_t *pid, int argc, char *argv[])
+{
+    printInsantPid(pid);
+}
+
+void printActionInfoENTRY(pid_t *pid, int argc, char *argv[])
+{
+    printInsantPid(pid);
+}
+
 
 /* Accesses the link */
 
@@ -136,16 +175,12 @@ long int sizeAttribution(struct stat *temp)
 
 void sigintHandler(int sig)
 {
-    struct timeval instant;
-    pid_t pid;
-
     if (num_threads = !0)
     {
         for (int n = 0; n < num_threads; n++)
         {
-            gettimeofday(&instant, 0);
+            printInsantPid(&threads[n]);
             kill(threads[n], SIGSTOP);
-            printInsantPid(&instant, &pid);
         }
     }
 
@@ -162,6 +197,7 @@ void sigintHandler(int sig)
         {
             for (int n = 0; n < num_threads; n++)
             {
+                printInsantPid(&threads[n]);
                 kill(threads[n], SIGCONT);
             }
         }
@@ -172,9 +208,12 @@ void sigintHandler(int sig)
         {
             for (int n = 0; n < num_threads; n++)
             {
+                printInsantPid(&threads[n]);
                 kill(threads[n], SIGKILL);
             }
         }
+        pid_t pid = getpid();
+        printInsantPid(&pid);
         kill(getpid(), SIGKILL);
     }
 }
@@ -223,6 +262,7 @@ int createProcess(char *currentdir, int depth)
     pid_t pid;
     char digitsre[DIGITS_MAX];
     memset(digitsre, '\0', DIGITS_MAX);
+    addThread(pid);
 
     if (pipe(fd) < 0)
     {
@@ -231,6 +271,7 @@ int createProcess(char *currentdir, int depth)
     }
     if ((pid = fork()) < 0)
     {
+        removeThread();
         fprintf(stderr, "fork error\n");
         exit(2);
     }
@@ -240,7 +281,7 @@ int createProcess(char *currentdir, int depth)
 
         initSigaction();
 
-        addThread(pid);
+        // addThread(pid);
         // addThread(wait(NULL));
 
         wait(NULL);
@@ -251,7 +292,7 @@ int createProcess(char *currentdir, int depth)
     else
     {                 /* filho */
         close(fd[0]); /* fecha lado receptor do pipe */
-        addThread(pid);
+        // addThread(pid);
         depth--;
         n = seekdirec(currentdir, depth);
         sprintf(digitsre, "%d", n);
