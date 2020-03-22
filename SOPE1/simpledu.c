@@ -145,7 +145,7 @@ void sigintHandler(int sig)
         {
             gettimeofday(&instant, 0);
             kill(threads[n], SIGSTOP);
-            printInsantPid(&instant,&pid);
+            printInsantPid(&instant, &pid);
         }
     }
 
@@ -241,9 +241,9 @@ int createProcess(char *currentdir, int depth)
         initSigaction();
 
         addThread(pid);
-        addThread(wait(NULL));
+        // addThread(wait(NULL));
 
-        // wait(NULL);
+        wait(NULL);
         read(fd[0], digitsre, DIGITS_MAX);
         n = atoi(digitsre);
         close(fd[0]); /* fecha lado receptor do pipe */
@@ -251,6 +251,7 @@ int createProcess(char *currentdir, int depth)
     else
     {                 /* filho */
         close(fd[0]); /* fecha lado receptor do pipe */
+        addThread(pid);
         depth--;
         n = seekdirec(currentdir, depth);
         sprintf(digitsre, "%d", n);
