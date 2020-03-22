@@ -71,44 +71,50 @@ double timeSinceStartTime()
 
 void printInsantPid(pid_t *pid)
 {
-    printf("%0.2f - %d", timeSinceStartTime(), *pid);
+    printf("%0.2f - %d - ", timeSinceStartTime(), *pid);
 }
 
 void printActionInfoCREATE(pid_t *pid, int argc, char *argv[])
 {
     printInsantPid(pid);
+    printf("CREATE - ");
 }
 
 void printActionInfoEXIT(pid_t *pid, int argc, char *argv[])
 {
     printInsantPid(pid);
+    printf("EXIT - ");
 }
 
-void printActionInfoRECV_SIGNAL(pid_t *pid, int argc, char *argv[])
+void printActionInfoRECV_SIGNAL(pid_t *pid, char *signal)
 {
     printInsantPid(pid);
+    printf("RECV_SIGNAL - %s\n", signal);
 }
 
-void printActionInfoSEND_SIGNAL(pid_t *pid, int argc, char *argv[])
+void printActionInfoSEND_SIGNAL(pid_t *pid, char *signal)
 {
     printInsantPid(pid);
+    printf("SEND_SIGNAL - %s\n", signal);
 }
 
 void printActionInfoRECV_PIP(pid_t *pid, int argc, char *argv[])
 {
     printInsantPid(pid);
+    printf("RECV_PIP - ");
 }
 
 void printActionInfoSEND_PIPE(pid_t *pid, int argc, char *argv[])
 {
     printInsantPid(pid);
+    printf("SEND_PIPE - ");
 }
 
 void printActionInfoENTRY(pid_t *pid, int argc, char *argv[])
 {
     printInsantPid(pid);
+    printf("ENTRY - ");
 }
-
 
 /* Accesses the link */
 
@@ -175,11 +181,15 @@ long int sizeAttribution(struct stat *temp)
 
 void sigintHandler(int sig)
 {
+    pid_t pid = getpid();
+
+    printActionInfoRECV_SIGNAL(&pid, "SIGINT");
+
     if (num_threads = !0)
     {
         for (int n = 0; n < num_threads; n++)
         {
-            printInsantPid(&threads[n]);
+            printActionInfoSEND_SIGNAL(&threads[n], "SIGSTOP");
             kill(threads[n], SIGSTOP);
         }
     }
@@ -197,7 +207,7 @@ void sigintHandler(int sig)
         {
             for (int n = 0; n < num_threads; n++)
             {
-                printInsantPid(&threads[n]);
+                printActionInfoSEND_SIGNAL(&threads[n], "SIGCONT");
                 kill(threads[n], SIGCONT);
             }
         }
@@ -208,13 +218,12 @@ void sigintHandler(int sig)
         {
             for (int n = 0; n < num_threads; n++)
             {
-                printInsantPid(&threads[n]);
+                printActionInfoSEND_SIGNAL(&threads[n], "SIGKILL");
                 kill(threads[n], SIGKILL);
             }
         }
-        pid_t pid = getpid();
-        printInsantPid(&pid);
-        kill(getpid(), SIGKILL);
+        printActionInfoSEND_SIGNAL(&pid, "SIGKILL");
+        kill(pid, SIGKILL);
     }
 }
 
@@ -262,6 +271,7 @@ int createProcess(char *currentdir, int depth)
     pid_t pid;
     char digitsre[DIGITS_MAX];
     memset(digitsre, '\0', DIGITS_MAX);
+
     addThread(pid);
 
     if (pipe(fd) < 0)
@@ -279,7 +289,7 @@ int createProcess(char *currentdir, int depth)
     {                 /* pai */
         close(fd[1]); /* fecha lado emissor do pipe */
 
-        initSigaction();
+        // initSigaction();
 
         // addThread(pid);
         // addThread(wait(NULL));
@@ -293,6 +303,7 @@ int createProcess(char *currentdir, int depth)
     {                 /* filho */
         close(fd[0]); /* fecha lado receptor do pipe */
         // addThread(pid);
+        initSigactionSIGIGN();
         depth--;
         n = seekdirec(currentdir, depth);
         sprintf(digitsre, "%d", n);
@@ -327,6 +338,10 @@ void print(long int size, char *workTable)
 /* Reads all files in a given directory and displays identically the way 'du' does */
 long int seekdirec(char *currentdir, int depth)
 {
+    // if (num_threads != 0)
+    // {
+    //     addThread(getpid());
+    // }
 
     if (VERBOSE)
         printf("    [INFO] Received address '%s' ....... OK!\n", currentdir);
@@ -444,7 +459,8 @@ long int seekdirec(char *currentdir, int depth)
             printf("%ld\t%s\n", size, workTable);
         }
     }
-    sleep(2);
+    sleep(1);
+    // removeThread();
 
     return size;
 }
@@ -462,7 +478,9 @@ int main(int argc, char *argv[])
     threads = (pid_t *)malloc(sizeof(pid_t *));
     num_threads = 0;
 
-    initSigactionSIGIGN();
+    initSigaction();
+
+    // initSigactionSIGIGN();
 
     // Set up flags
     for (int i = 1; i < argc; i++)
