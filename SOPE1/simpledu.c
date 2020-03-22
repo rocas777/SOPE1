@@ -22,11 +22,7 @@
 #define BLOCK_SIZE_STAT 512
 #define BLOCK_SIZE_PRINT 1024
 
-int num_threads;      // number of threads;
-pid_t *threads;       // Array of pid of created threads
-bool stopped = false; // True if stopped by SIGSTOP
-
-pid_t pgid; //process id for the parent;
+pid_t pgid; //process id for the parent of child's process group.
 
 struct timeval *startTime; //Time of beggining of program
 
@@ -64,48 +60,8 @@ void printThreads();
 
 // Function bodies:
 
-/* Thread handling */
-void printThreads()
-{
-    printf("\nList Threads:\n");
-    if (num_threads = !0)
-    {
-        for (int n = 0; n < num_threads; n++)
-        {
-            printf("%d - %d\t", n, threads[n]);
-        }
-    }
-    printf("\n");
-}
-
-void emptyThreads()
-{
-    // while (num_threads > 0)
-    // {
-    //     removeThread();
-    // }
-    num_threads = 0;
-}
-
-void removeThread()
-{
-    if (num_threads > 0)
-    {
-        threads[num_threads - 1] = 0;
-        num_threads--;
-    }
-}
-
-void addThread(pid_t pid)
-{
-    threads[num_threads] = pid;
-    num_threads++;
-    // printf("\nget thread -> %d\n", threads[num_threads - 1]);
-}
-
 /* Log prints*/
-//Returns time in miliseconds since begging of program
-double timeSinceStartTime()
+double timeSinceStartTime() //Returns time in miliseconds since begging of program
 {
     struct timeval instant;
     gettimeofday(&instant, 0);
@@ -136,10 +92,10 @@ void printActionInfoRECV_SIGNAL(pid_t *pid, char *signal)
     printf("RECV_SIGNAL - %s\n", signal);
 }
 
-void printActionInfoSEND_SIGNAL(pid_t *pid, char *signal, pid_t *destination)
+void printActionInfoSEND_SIGNAL(pid_t *pid, char *signal, pid_t destination)
 {
     printInsantPid(pid);
-    printf("SEND_SIGNAL - %s %d\n", signal, *destination);
+    printf("SEND_SIGNAL - %s \"%d\"\n", signal, destination);
 }
 
 void printActionInfoRECV_PIP(pid_t *pid, int argc, char *argv[])
@@ -224,79 +180,13 @@ long int sizeAttribution(struct stat *temp)
 }
 
 /* Signals */
-void sendSignalToAllThreads(int sig)
-{
-    pid_t pid = getpid();
-
-    if (num_threads > 0)
-    {
-        for (int n = 0; n < num_threads; n++)
-        {
-            switch (sig)
-            {
-            case 2:
-                printActionInfoSEND_SIGNAL(&pid, "SIGINT", &threads[n]);
-                kill(threads[n], sig);
-                break;
-
-            case 15:
-                printActionInfoSEND_SIGNAL(&pid, "SIGTERM", &threads[n]);
-                kill(threads[n], sig);
-                break;
-
-            case 18:
-                printActionInfoSEND_SIGNAL(&pid, "SIGCONT", &threads[n]);
-                kill(threads[n], sig);
-                break;
-
-            case 19:
-                printActionInfoSEND_SIGNAL(&pid, "SIGSTOP", &threads[n]);
-                kill(threads[n], sig);
-                break;
-
-            default:
-                break;
-            }
-        }
-    }
-}
-
-void sigintHandlerChild(int sig)
-{
-    // printThreads();
-    pid_t pid = getpid();
-    printActionInfoRECV_SIGNAL(&pid, "SIGINT");
-
-    if (sig == SIGINT)
-    {
-        if (!stopped)
-        {
-            sendSignalToAllThreads(SIGINT);
-            stopped = true;
-            sendSignalToAllThreads(SIGSTOP);
-        }
-        else
-        {
-            sendSignalToAllThreads(SIGINT);
-            stopped = false;
-            sendSignalToAllThreads(SIGCONT);
-        }
-    }
-    else if (sig == SIGTERM)
-    {
-        sendSignalToAllThreads(SIGTERM);
-
-        printActionInfoSEND_SIGNAL(&pid, "SIGTERM", &pid);
-        kill(pid, SIGTERM);
-    }
-}
-
 void sigintHandler(int sig)
 {
     pid_t pid = getpid();
 
     printActionInfoRECV_SIGNAL(&pid, "SIGINT");
 
+    printActionInfoSEND_SIGNAL(&pid, "SIGSTOP", -pgid);
     kill(-pgid, SIGSTOP);
 
     int i = -1;
@@ -308,17 +198,19 @@ void sigintHandler(int sig)
 
     if (i == 0)
     {
+        printActionInfoSEND_SIGNAL(&pid, "SIGCONT", -pgid);
         kill(-pgid, SIGCONT);
     }
     else
     {
-         // printActionInfoSEND_SIGNAL(&pid, "SIGTERM", &pid);
+        printActionInfoSEND_SIGNAL(&pid, "SIGTERM", -pgid);
         kill(-pgid, SIGTERM);
+        printActionInfoSEND_SIGNAL(&pid, "SIGTERM", pid);
         kill(pid, SIGTERM);
     }
 }
 
-void initSigactionSIGIGN()
+void initSigactionSIG_IGN()
 {
     // prepare the 'sigaction struct'
     struct sigaction action;
@@ -372,19 +264,14 @@ int createProcess(char *currentdir, int depth)
             pgid = pid;
         }
 
-        addThread(pid);
         wait(NULL);
-        removeThread();
-
         read(fd[0], digitsre, DIGITS_MAX);
         n = atoi(digitsre);
         close(fd[0]); /* fecha lado receptor do pipe */
     }
     else
     { /* filho */
-        // setpgrp();
-        initSigactionSIGIGN();
-        // emptyThreads();
+        initSigactionSIG_IGN();
 
         close(fd[0]); /* fecha lado receptor do pipe */
         depth--;
@@ -551,14 +438,9 @@ int main(int argc, char *argv[])
     tags.countLink_C = 1;
     tags.blockSize_C = BLOCK_SIZE_STAT;
 
-    threads = (pid_t *)malloc(sizeof(pid_t) * 1000);
-    num_threads = 0;
-
     pgid = 0;
 
     initSigaction();
-
-    // initSigactionSIGIGN();
 
     // Set up flags
     for (int i = 1; i < argc; i++)
