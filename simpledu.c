@@ -294,9 +294,12 @@ void sigintHandlerChild(int sig)
 void sigintHandler(int sig)
 {
     pid_t pid = getpid();
+    // printThreads();
 
     printActionInfoRECV_SIGNAL(&pid, "SIGINT");
 
+    // sendSignalToAllThreads(SIGINT);
+    // sendSignalToAllThreads(SIGSTOP);
     kill(-pgid, SIGSTOP);
 
     int i = -1;
@@ -308,11 +311,16 @@ void sigintHandler(int sig)
 
     if (i == 0)
     {
+        // sendSignalToAllThreads(SIGINT);
+        // sendSignalToAllThreads(SIGCONT);
         kill(-pgid, SIGCONT);
     }
     else
     {
-         // printActionInfoSEND_SIGNAL(&pid, "SIGTERM", &pid);
+        // sendSignalToAllThreads(SIGTERM);
+
+        // printActionInfoSEND_SIGNAL(&pid, "SIGTERM", &pid);
+        // kill(pid, SIGTERM);
         kill(-pgid, SIGTERM);
         kill(pid, SIGTERM);
     }
@@ -322,12 +330,14 @@ void initSigactionSIGIGN()
 {
     // prepare the 'sigaction struct'
     struct sigaction action;
+    // action.sa_handler = sigintHandlerChild;
     action.sa_handler = SIG_IGN;
     sigemptyset(&action.sa_mask);
     action.sa_flags = 0;
 
     // install the handler
     sigaction(SIGINT, &action, NULL);
+    // sigaction(SIGTERM, &action, NULL);
 }
 
 void initSigaction()
