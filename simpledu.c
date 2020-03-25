@@ -9,6 +9,7 @@
 #include <unistd.h>
 #include <stdbool.h>
 #include <signal.h>
+#include <errno.h>
 
 #define DIRECTORY "."
 #define DIRECTORY_LINE "./"
@@ -25,6 +26,8 @@
 pid_t pgid; //process id for the parent of child's process group.
 
 struct timeval *startTime; //Time of beggining of program
+
+FILE *log_filename; //File
 
 /* Global variables: Used the dictate the flags */
 
@@ -73,54 +76,62 @@ double timeSinceStartTime() //Returns time in miliseconds since begging of progr
 
 void printInsantPid(pid_t *pid)
 {
-    printf("%0.2f - %d - ", timeSinceStartTime(), *pid);
+    fprintf(log_filename, "%0.2f - %d - ", timeSinceStartTime(), *pid);
 }
 
 void printActionInfoCREATE(pid_t *pid, int argc, char *argv[])
 {
     printInsantPid(pid);
-    printf("CREATE - ");
-    int i=1;
-    for(;i<argc-1;i++){
-	printf("%s,",argv[i]);
+    fprintf(log_filename, "CREATE - ");
+    int i = 1;
+    for (; i < argc - 1; i++)
+    {
+        fprintf(log_filename, "%s,", argv[i]);
     }
-    printf("%s\n",argv[i]);
+    fprintf(log_filename, "%s\n", argv[i]);
+    fflush(log_filename);
 }
 
 void printActionInfoEXIT(pid_t *pid, int exit)
 {
     printInsantPid(pid);
-    printf("EXIT - %i\n",exit);
+    fprintf(log_filename, "EXIT - %i\n", exit);
+    fflush(log_filename);
 }
 
 void printActionInfoRECV_SIGNAL(pid_t *pid, char *signal)
 {
     printInsantPid(pid);
-    printf("RECV_SIGNAL - %s\n", signal);
+    fprintf(log_filename, "RECV_SIGNAL - %s\n", signal);
+    fflush(log_filename);
 }
 
 void printActionInfoSEND_SIGNAL(pid_t *pid, char *signal, pid_t destination)
 {
     printInsantPid(pid);
-    printf("SEND_SIGNAL - %s \"%d\"\n", signal, destination);
+    fprintf(log_filename, "SEND_SIGNAL - %s \"%d\"\n", signal, destination);
+    fflush(log_filename);
 }
 
-void printActionInfoRECV_PIP(pid_t *pid, int argc, char *argv[])
+void printActionInfoRECV_PIP(pid_t *pid, char *message)
 {
     printInsantPid(pid);
-    printf("RECV_PIP - ");
+    fprintf(log_filename, "RECV_PIP - %s\n", message);
+    fflush(log_filename);
 }
 
-void printActionInfoSEND_PIPE(pid_t *pid, int argc, char *argv[])
+void printActionInfoSEND_PIPE(pid_t *pid, char *message)
 {
     printInsantPid(pid);
-    printf("SEND_PIPE - ");
+    fprintf(log_filename, "SEND_PIPE - %s\n", message);
+    fflush(log_filename);
 }
 
 void printActionInfoENTRY(pid_t *pid, int argc, char *argv[])
 {
     printInsantPid(pid);
-    printf("ENTRY - ");
+    fprintf(log_filename, "ENTRY - ");
+    fflush(log_filename);
 }
 
 /* Accesses the link */
@@ -163,8 +174,6 @@ void printTags()
     printf("tags.separatedirs_C = %d\n", tags.separatedirs_C);
     printf("tags.maxDepth_C = %d\n", tags.maxDepth_C);
 }
-
-
 
 /* Signals */
 void sigintHandler(int sig)
@@ -252,19 +261,21 @@ int createProcess(char *currentdir, int depth)
 
         wait(NULL);
         read(fd[0], digitsre, DIGITS_MAX);
+        printActionInfoRECV_PIP(&pid, digitsre);
         n = atoi(digitsre);
         close(fd[0]); /* fecha lado receptor do pipe */
     }
     else
-    {                 /* filho */
+    { /* filho */
         initSigactionSIG_IGN();
-	pid=getpid();
-	//printActionInfoCREATE(&pid, argcG, argvG);
+        pid = getpid();
+        //printActionInfoCREATE(&pid, argcG, argvG);
         close(fd[0]); /* fecha lado receptor do pipe */
         depth--;
         n = seekdirec(currentdir, depth);
         sprintf(digitsre, "%d", n);
         write(fd[1], digitsre, strlen(digitsre));
+        printActionInfoSEND_PIPE(&pid, digitsre);
         close(fd[1]); /* fecha lado emissor do pipe */
 
         exit(0);
@@ -276,11 +287,11 @@ int createProcess(char *currentdir, int depth)
 void print(long int size, char *workTable)
 {
     //if(tags.bytesDisplay_C){
-	long long out = size;
-	//printf("%i\n",tags.blockSize_C);
-	size /= tags.blockSize_C;
-	if(out%tags.blockSize_C)
-		size++;
+    long long out = size;
+    //printf("%i\n",tags.blockSize_C);
+    size /= tags.blockSize_C;
+    if (out % tags.blockSize_C)
+        size++;
     //}
     printf("%ld\t%s\n", size, workTable);
 }
@@ -291,16 +302,16 @@ long long int sizeAttribution(struct stat *temp)
 
     long long int value;
 
-    if(tags.bytesDisplay_C)
-	value = temp->st_size;
-    else{
-	value = temp->st_blocks * BLOCK_SIZE_STAT;
-	//long long out = value;
-	//printf("%i\n",tags.blockSize_C);
-	//value /= tags.blockSize_C;
-	//if(out%tags.blockSize_C)
-	//	value++;
-	
+    if (tags.bytesDisplay_C)
+        value = temp->st_size;
+    else
+    {
+        value = temp->st_blocks * BLOCK_SIZE_STAT;
+        //long long out = value;
+        //printf("%i\n",tags.blockSize_C);
+        //value /= tags.blockSize_C;
+        //if(out%tags.blockSize_C)
+        //	value++;
     }
 
     return value;
@@ -356,8 +367,8 @@ long int seekdirec(char *currentdir, int depth)
                         long int returned = 0;
                         returned = createProcess(workTable, depth);
 
-			pid_t pid=getpid();
-			//printActionInfoEXIT(&pid, returned);
+                        pid_t pid = getpid();
+                        //printActionInfoEXIT(&pid, returned);
 
                         if (!tags.separatedirs_C)
                             size += returned;
@@ -375,8 +386,8 @@ long int seekdirec(char *currentdir, int depth)
                                 if (depth > 0)
                                 {
                                     //printf("[%d]\t", depth);
-					long int temporary=sizeAttribution(&status);
-                                	print(temporary, workTable);
+                                    long int temporary = sizeAttribution(&status);
+                                    print(temporary, workTable);
                                 }
                             }
                             size += sizeAttribution(&status);
@@ -398,7 +409,7 @@ long int seekdirec(char *currentdir, int depth)
                             if (depth > 0)
                             {
                                 //printf("[%d]\t", depth);
-				long int temporary=sizeAttribution(&status);
+                                long int temporary = sizeAttribution(&status);
                                 print(temporary, workTable);
                             }
                         }
@@ -415,17 +426,14 @@ long int seekdirec(char *currentdir, int depth)
     closedir(d);
     strcpy(workTable, currentdir);
 
-    
-
     if (depth >= 0)
     {
-            print(size, workTable);
+        print(size, workTable);
     }
     //sleep(1);
 
     return size;
 }
-
 
 int main(int argc, char *argv[])
 {
@@ -436,14 +444,22 @@ int main(int argc, char *argv[])
     tags.maxDepth_C = CUSTOM_INF;
     tags.countLink_C = 1;
     tags.blockSize_C = 1024;
-	
-    pid_t pid=getpid();
-       
-    argvG=argv;
-    argcG=argc;
+
+    pid_t pid = getpid();
+
+    argvG = argv;
+    argcG = argc;
     pgid = 0;
 
     initSigaction();
+
+    if ((log_filename = fopen("../LOG_FILENAME", "w")) == NULL)
+    {
+        int errsv = errno;
+        printf("%d\n", errsv);
+        perror(strerror(errsv));
+        exit(1);
+    }
 
     // Set up flags
     for (int i = 1; i < argc; i++)
@@ -469,7 +485,7 @@ int main(int argc, char *argv[])
             {
                 tags.blockSize_C = atoi(argv[i] + 13 * sizeof(char));
             }
-	    
+
             char *temp;
             if ((temp = strstr(argv[i], "-B")) != NULL)
             {
@@ -506,6 +522,8 @@ int main(int argc, char *argv[])
 
     //printTags();
     seekdirec(directoryLine, tags.maxDepth_C);
+
+    fclose(log_filename);
 
     return 0;
 }
