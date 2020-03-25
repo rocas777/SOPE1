@@ -19,3 +19,7 @@ Isto é um log. Cria-se um ficheiro com a logs das funções e sinais.
 instant –pid –action –info
 ta no moodle o que cada quer dizer.
 mas sempre que acontece alguma action (CREATE, EXIT, RECV_SIGNAL, SEND_SIGNAL, RECV_PIPE, SEND_PIPE e ENTRY) deve adicionar uma fila ao ficheiro.
+
+////ERROS
+Overflow
+Inode Fifos não são reconhecidos
