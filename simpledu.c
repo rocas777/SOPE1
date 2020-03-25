@@ -361,6 +361,8 @@ long long int seekdirec(char *currentdir, int depth)
             {
                 if (!lstat(strcat(workTable, dira->d_name), &status))
                 {
+		    //printf("modo: %i\n",status.st_mode);
+		    //printf("modo: %li\n",status.st_size);
                     // [DEBUG] printf("Cycle loaded by process id: %d -- (%s)!\n", getpid(), workTable);
                     // If it is a directory:
                     if (S_ISDIR(status.st_mode))
@@ -414,6 +416,20 @@ long long int seekdirec(char *currentdir, int depth)
                                 //printf("[%d]\t", depth);
     				//printf("acom: %lli\n",size);
     				//printf("file: %li\n",status.st_size);
+                                long long int temporary = sizeAttribution(&status);
+                                print(temporary, workTable);
+                            }
+                        }
+                    }
+		    else
+                    {
+                        if (VERBOSE)
+                            printf("    [INFO] Directory '%s' is a regular file ....... OK!\n", workTable);
+                        size += sizeAttribution(&status);
+                        if (tags.allFiles_C)
+                        {
+                            if (depth > 0)
+                            {
                                 long long int temporary = sizeAttribution(&status);
                                 print(temporary, workTable);
                             }
