@@ -168,7 +168,7 @@ void printTags()
 long int sizeAttribution(struct stat *temp)
 {
 
-    float value;
+    long long int value;
 
     value = (temp->st_size);
 
@@ -268,7 +268,7 @@ int createProcess(char *currentdir, int depth)
     {                 /* filho */
         initSigactionSIG_IGN();
 	pid=getpid();
-	printActionInfoCREATE(&pid, argcG, argvG);
+	//printActionInfoCREATE(&pid, argcG, argvG);
         close(fd[0]); /* fecha lado receptor do pipe */
         depth--;
         n = seekdirec(currentdir, depth);
