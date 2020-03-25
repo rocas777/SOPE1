@@ -43,6 +43,7 @@ cTags tags = {0};
 
 // Function prototypes:
 
+int num_thread=0;
 long int seekdirec(char *currentdir, int depth);
 int createProcess(char *currentdir, int depth);
 void printTags();
@@ -250,7 +251,8 @@ int createProcess(char *currentdir, int depth)
             pgid = pid;
         }
 
-        wait(NULL);
+       	num_thread++;
+	wait(NULL);
         read(fd[0], digitsre, DIGITS_MAX);
         n = atoi(digitsre);
         close(fd[0]); /* fecha lado receptor do pipe */
@@ -421,8 +423,14 @@ long int seekdirec(char *currentdir, int depth)
     {
             print(size, workTable);
     }
-    //sleep(1);
-
+    sleep(1);
+    int status_exit;
+    printf("Threads: %i\n",num_thread);
+    while(num_thread){
+    	pid_t pid=wait(&status_exit);
+	printActionInfoEXIT(&pid,status_exit);
+	num_thread--;
+    }
     return size;
 }
 
