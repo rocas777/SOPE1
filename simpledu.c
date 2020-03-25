@@ -323,7 +323,7 @@ void print(long long int size, char *workTable)
     if (out % tags.blockSize_C)
         size++;
     //}
-    printf("%d\tgroup %d\tpgid %d\t", getpid(), getpgrp(), pgid);
+    // printf("%d\tgroup %d\tpgid %d\t", getpid(), getpgrp(), pgid);
     printf("%lld\t%s\n", size, workTable);
 }
 
@@ -476,7 +476,7 @@ long long int seekdirec(char *currentdir, int depth)
     {
         print(size, workTable);
     }
-    sleep(1);
+    // sleep(1);
     int status_exit;
     /*
     printf("Threads: %i\n",num_thread);
