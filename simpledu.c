@@ -47,11 +47,11 @@ cTags tags = {0};
 // Function prototypes:
 
 int num_thread=0;
-long int seekdirec(char *currentdir, int depth);
-int createProcess(char *currentdir, int depth);
+long long int seekdirec(char *currentdir, int depth);
+long long int createProcess(char *currentdir, int depth);
 void printTags();
 long long int sizeAttribution(struct stat *temp);
-long int dereferenceLink(char *workTable, int depth);
+long long int dereferenceLink(char *workTable, int depth);
 void sigintHandler(int sig);
 void initSigaction();
 void initSigactionSIGIGN();
@@ -139,10 +139,10 @@ void printActionInfoENTRY(pid_t *pid, int argc, char *argv[])
 
 int blockSize = 512;
 
-long int dereferenceLink(char *workTable, int depth)
+long long int dereferenceLink(char *workTable, int depth)
 {
     struct stat status;
-    long int sizeRep;
+    long long int sizeRep;
 
     char megaPath[MAX_SIZE];
     readlink(workTable, megaPath, MAX_SIZE - 1);
@@ -152,7 +152,7 @@ long int dereferenceLink(char *workTable, int depth)
         if (depth > 0)
         {
             //printf("[%d]\t", depth);
-            printf("%ld\t%s\n", sizeRep, workTable);
+            printf("%lld\t%s\n", sizeRep, workTable);
         }
         return sizeRep;
     }
@@ -231,10 +231,11 @@ void initSigaction()
 }
 
 /* Creates a process. */
-int createProcess(char *currentdir, int depth)
+long long int createProcess(char *currentdir, int depth)
 {
     fflush(stdout);
-    int n, fd[2];
+    long long int n;
+    int fd[2];
     pid_t pid;
     char digitsre[DIGITS_MAX];
     memset(digitsre, '\0', DIGITS_MAX);
@@ -264,7 +265,7 @@ int createProcess(char *currentdir, int depth)
 	wait(NULL);
         read(fd[0], digitsre, DIGITS_MAX);
         printActionInfoRECV_PIP(&pid, digitsre);
-        n = atoi(digitsre);
+        n = atoll(digitsre);
         close(fd[0]); /* fecha lado receptor do pipe */
     }
     else
@@ -275,7 +276,7 @@ int createProcess(char *currentdir, int depth)
         close(fd[0]); /* fecha lado receptor do pipe */
         depth--;
         n = seekdirec(currentdir, depth);
-        sprintf(digitsre, "%d", n);
+        sprintf(digitsre, "%lld", n);
         write(fd[1], digitsre, strlen(digitsre));
         printActionInfoSEND_PIPE(&pid, digitsre);
         close(fd[1]); /* fecha lado emissor do pipe */
@@ -286,16 +287,16 @@ int createProcess(char *currentdir, int depth)
     return n;
 }
 
-void print(long int size, char *workTable)
+void print(long long int size, char *workTable)
 {
     //if(tags.bytesDisplay_C){
-    long long out = size;
+    long long int out = size;
     //printf("%i\n",tags.blockSize_C);
     size /= tags.blockSize_C;
     if (out % tags.blockSize_C)
         size++;
     //}
-    printf("%ld\t%s\n", size, workTable);
+    printf("%lld\t%s\n", size, workTable);
 }
 
 /* Attributes sizes based on the activated tags. */
@@ -315,12 +316,12 @@ long long int sizeAttribution(struct stat *temp)
         //if(out%tags.blockSize_C)
         //	value++;
     }
-
+    //printf("%lli\n",value);
     return value;
 }
 
 /* Reads all files in a given directory and displays identically the way 'du' does */
-long int seekdirec(char *currentdir, int depth)
+long long int seekdirec(char *currentdir, int depth)
 {
     if (VERBOSE)
         printf("    [INFO] Received address '%s' ....... OK!\n", currentdir);
@@ -332,7 +333,7 @@ long int seekdirec(char *currentdir, int depth)
     DIR *d;
     struct dirent *dira;
     struct stat status;
-    long int size = 0;
+    long long int size = 0;
 
     // First step: Attribute base size of the directory
     if (!lstat(workTable, &status))
@@ -366,7 +367,7 @@ long int seekdirec(char *currentdir, int depth)
                     {
                         if (VERBOSE)
                             printf("    [INFO] Directory '%s' is a directory ....... OK! (size: %ld)\n", workTable, status.st_size);
-                        long int returned = 0;
+                        long long int returned = 0;
                         returned = createProcess(workTable, depth);
 
                         pid_t pid = getpid();
@@ -388,7 +389,7 @@ long int seekdirec(char *currentdir, int depth)
                                 if (depth > 0)
                                 {
                                     //printf("[%d]\t", depth);
-                                    long int temporary = sizeAttribution(&status);
+                                    long long int temporary = sizeAttribution(&status);
                                     print(temporary, workTable);
                                 }
                             }
@@ -411,7 +412,9 @@ long int seekdirec(char *currentdir, int depth)
                             if (depth > 0)
                             {
                                 //printf("[%d]\t", depth);
-                                long int temporary = sizeAttribution(&status);
+    				//printf("acom: %lli\n",size);
+    				//printf("file: %li\n",status.st_size);
+                                long long int temporary = sizeAttribution(&status);
                                 print(temporary, workTable);
                             }
                         }
@@ -441,6 +444,7 @@ long int seekdirec(char *currentdir, int depth)
 	printActionInfoEXIT(&pid,status_exit);
 	num_thread--;
     }*/
+    //printf("dir: %lli\n",size);
     return size;
 }
 
