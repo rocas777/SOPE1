@@ -282,7 +282,7 @@ long long int createProcess(char *currentdir, int depth)
 
         if (pgid == pid) // se o grupo de processos acabar, se for necessário, é preciso criar um novo.
         {
-            printf("\nreset:\t%d\n", pgid);
+            // printf("\nreset:\t%d\n", pgid);
             pgid = 0;
         }
 
