@@ -432,7 +432,7 @@ long int seekdirec(char *currentdir, int depth)
     {
         print(size, workTable);
     }
-    sleep(1);
+    //sleep(1);
     int status_exit;
     /*
     printf("Threads: %i\n",num_thread);
