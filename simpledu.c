@@ -57,6 +57,8 @@ void emptyThreads();
 void printInsantPid(pid_t *pid);
 double timeSinceStartTime();
 void printThreads();
+int argcG;
+char **argvG;
 
 // Function bodies:
 
@@ -78,12 +80,17 @@ void printActionInfoCREATE(pid_t *pid, int argc, char *argv[])
 {
     printInsantPid(pid);
     printf("CREATE - ");
+    int i=1;
+    for(;i<argc-1;i++){
+	printf("%s,",argv[i]);
+    }
+    printf("%s\n",argv[i]);
 }
 
-void printActionInfoEXIT(pid_t *pid, int argc, char *argv[])
+void printActionInfoEXIT(pid_t *pid, int exit)
 {
     printInsantPid(pid);
-    printf("EXIT - ");
+    printf("EXIT - %i\n",exit);
 }
 
 void printActionInfoRECV_SIGNAL(pid_t *pid, char *signal)
@@ -163,19 +170,8 @@ long int sizeAttribution(struct stat *temp)
 
     float value;
 
-    if (tags.bytesDisplay_C)
-    {
-        value = (temp->st_size);
-    }
-    else
-    {
-        value = (temp->st_blocks * BLOCK_SIZE_STAT);
-        value /= tags.blockSize_C;
+    value = (temp->st_size);
 
-        int out = value;
-        if (value > out)
-            value++;
-    }
     return value;
 }
 
@@ -271,7 +267,8 @@ int createProcess(char *currentdir, int depth)
     else
     {                 /* filho */
         initSigactionSIG_IGN();
-
+	pid=getpid();
+	printActionInfoCREATE(&pid, argcG, argvG);
         close(fd[0]); /* fecha lado receptor do pipe */
         depth--;
         n = seekdirec(currentdir, depth);
@@ -289,13 +286,7 @@ void print(long int size, char *workTable)
 {
     if (tags.bytesDisplay_C)
     {
-        float value = size;
-        value /= tags.blockSize_C;
-        int out = value;
-        if (value > out)
-            value++;
-        long int temp_out = value;
-        printf("%ld\t%s\n", temp_out, workTable);
+        printf("%ld\t%s\n", size, workTable);
     }
     else
     {
@@ -352,6 +343,10 @@ long int seekdirec(char *currentdir, int depth)
                             printf("    [INFO] Directory '%s' is a directory ....... OK! (size: %ld)\n", workTable, status.st_size);
                         long int returned = 0;
                         returned = createProcess(workTable, depth);
+
+			pid_t pid=getpid();
+			//printActionInfoEXIT(&pid, returned);
+
                         if (!tags.separatedirs_C)
                             size += returned;
                     }
@@ -368,7 +363,8 @@ long int seekdirec(char *currentdir, int depth)
                                 if (depth > 0)
                                 {
                                     //printf("[%d]\t", depth);
-                                    print(sizeAttribution(&status), workTable);
+					long int temporary=sizeAttribution(&status);
+                                	print(temporary, workTable);
                                 }
                             }
                             size += sizeAttribution(&status);
@@ -390,7 +386,8 @@ long int seekdirec(char *currentdir, int depth)
                             if (depth > 0)
                             {
                                 //printf("[%d]\t", depth);
-                                print(sizeAttribution(&status), workTable);
+				long int temporary=sizeAttribution(&status);
+                                print(temporary, workTable);
                             }
                         }
                     }
@@ -405,6 +402,9 @@ long int seekdirec(char *currentdir, int depth)
     }
     closedir(d);
     strcpy(workTable, currentdir);
+
+    
+
     if (depth >= 0)
     {
         if (tags.bytesDisplay_C)
@@ -422,10 +422,11 @@ long int seekdirec(char *currentdir, int depth)
             printf("%ld\t%s\n", size, workTable);
         }
     }
-    sleep(1);
+    //sleep(1);
 
     return size;
 }
+
 
 int main(int argc, char *argv[])
 {
@@ -436,7 +437,12 @@ int main(int argc, char *argv[])
     tags.maxDepth_C = CUSTOM_INF;
     tags.countLink_C = 1;
     tags.blockSize_C = BLOCK_SIZE_STAT;
-
+	
+    pid_t pid=getpid();
+	
+       
+    argvG=argv;
+    argcG=argc;
     pgid = 0;
 
     initSigaction();
@@ -465,6 +471,7 @@ int main(int argc, char *argv[])
             {
                 tags.blockSize_C = atoi(argv[i] + 13 * sizeof(char));
             }
+	    
             char *temp;
             if ((temp = strstr(argv[i], "-B")) != NULL)
             {
