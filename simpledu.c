@@ -46,7 +46,7 @@ cTags tags = {0};
 
 // Function prototypes:
 
-int num_thread=0;
+// int num_thread = 0;
 long long int seekdirec(char *currentdir, int depth);
 long long int createProcess(char *currentdir, int depth);
 void printTags();
@@ -55,12 +55,8 @@ long long int dereferenceLink(char *workTable, int depth);
 void sigintHandler(int sig);
 void initSigaction();
 void initSigactionSIGIGN();
-void addThread(pid_t pid);
-void removeThread();
-void emptyThreads();
 void printInsantPid(pid_t *pid);
 double timeSinceStartTime();
-void printThreads();
 int argcG;
 char **argvG;
 
@@ -83,7 +79,7 @@ void printInsantPid(pid_t *pid)
 void printActionInfoCREATE(pid_t *pid, int argc, char *argv[])
 {
     printInsantPid(pid);
-    fprintf(log_filename, "CREATE - ");
+    fprintf(log_filename, "CREATE -\t");
     int i = 1;
     for (; i < argc - 1; i++)
     {
@@ -96,7 +92,7 @@ void printActionInfoCREATE(pid_t *pid, int argc, char *argv[])
 void printActionInfoEXIT(pid_t *pid, int exit)
 {
     printInsantPid(pid);
-    fprintf(log_filename, "EXIT -\t %i\n", exit);
+    fprintf(log_filename, "EXIT -\t\t %i\n", exit);
     fflush(log_filename);
 }
 
@@ -183,8 +179,11 @@ void sigintHandler(int sig)
 
     printActionInfoRECV_SIGNAL(&pid, "SIGINT");
 
-    printActionInfoSEND_SIGNAL(&pid, "SIGSTOP", -pgid);
-    kill(-pgid, SIGSTOP);
+    if (pgid != 0)
+    {
+        printActionInfoSEND_SIGNAL(&pid, "SIGSTOP", -pgid);
+        kill(-pgid, SIGSTOP);
+    }
 
     int i = -1;
     while (i != 0 && i != 1)
@@ -195,13 +194,20 @@ void sigintHandler(int sig)
 
     if (i == 0)
     {
-        printActionInfoSEND_SIGNAL(&pid, "SIGCONT", -pgid);
-        kill(-pgid, SIGCONT);
+        if (pgid != 0)
+        {
+            printActionInfoSEND_SIGNAL(&pid, "SIGCONT", -pgid);
+            kill(-pgid, SIGCONT);
+        }
     }
     else
     {
-        printActionInfoSEND_SIGNAL(&pid, "SIGTERM", -pgid);
-        kill(-pgid, SIGTERM);
+        if (pgid != 0)
+        {
+            printActionInfoSEND_SIGNAL(&pid, "SIGTERM", -pgid);
+            kill(-pgid, SIGTERM);
+        }
+        printActionInfoSEND_SIGNAL(&pid, "SIGTERM", pid);
         kill(pid, SIGTERM);
     }
 }
@@ -255,30 +261,51 @@ long long int createProcess(char *currentdir, int depth)
     {                 /* pai */
         close(fd[1]); /* fecha lado emissor do pipe */
 
-        setpgid(pid, -pgid);
-        if (pgid == 0)
+        if (pgid == 0) // se não tiver pai (thread principal)
         {
+            // setpgid(pid, 0); // cria novo grupo de processos para o filho e filhos deste
             pgid = pid;
         }
+        else
+        {
+            setpgid(pid, getpgrp());
+        }
 
-       	num_thread++;
-	wait(NULL);
+        // num_thread++;
+
+        int status = -1;
+        while (status != 0)
+        {
+            waitpid(pid, &status, 0);
+            printActionInfoEXIT(&pid, status);
+        }
+
+        if (pgid == pid) // se o grupo de processos acabar, se for necessário, é preciso criar um novo.
+        {
+            printf("\nreset:\t%d\n", pgid);
+            pgid = 0;
+        }
+
         read(fd[0], digitsre, DIGITS_MAX);
-        printActionInfoRECV_PIP(&pid, digitsre);
+        pid_t pid_p = getpid();
+        printActionInfoRECV_PIP(&pid_p, digitsre);
         n = atoll(digitsre);
         close(fd[0]); /* fecha lado receptor do pipe */
     }
     else
     { /* filho */
         initSigactionSIG_IGN();
-        pid = getpid();
-        //printActionInfoCREATE(&pid, argcG, argvG);
+        pid_t pid_p = getpid();
+        if (pgid == 0)
+            setpgrp(); // cria novo grupo de processos para o filho e filhos deste
+        pgid = -1;
+        printActionInfoCREATE(&pid_p, argcG, argvG);
         close(fd[0]); /* fecha lado receptor do pipe */
         depth--;
         n = seekdirec(currentdir, depth);
         sprintf(digitsre, "%lld", n);
         write(fd[1], digitsre, strlen(digitsre));
-        printActionInfoSEND_PIPE(&pid, digitsre);
+        printActionInfoSEND_PIPE(&pid_p, digitsre);
         close(fd[1]); /* fecha lado emissor do pipe */
 
         exit(0);
@@ -296,6 +323,7 @@ void print(long long int size, char *workTable)
     if (out % tags.blockSize_C)
         size++;
     //}
+    printf("%d\tgroup %d\tpgid %d\t", getpid(), getpgrp(), pgid);
     printf("%lld\t%s\n", size, workTable);
 }
 
@@ -361,8 +389,8 @@ long long int seekdirec(char *currentdir, int depth)
             {
                 if (!lstat(strcat(workTable, dira->d_name), &status))
                 {
-		    //printf("modo: %i\n",status.st_mode);
-		    //printf("modo: %li\n",status.st_size);
+                    //printf("modo: %i\n",status.st_mode);
+                    //printf("modo: %li\n",status.st_size);
                     // [DEBUG] printf("Cycle loaded by process id: %d -- (%s)!\n", getpid(), workTable);
                     // If it is a directory:
                     if (S_ISDIR(status.st_mode))
@@ -371,9 +399,6 @@ long long int seekdirec(char *currentdir, int depth)
                             printf("    [INFO] Directory '%s' is a directory ....... OK! (size: %ld)\n", workTable, status.st_size);
                         long long int returned = 0;
                         returned = createProcess(workTable, depth);
-
-                        pid_t pid = getpid();
-                        //printActionInfoEXIT(&pid, returned);
 
                         if (!tags.separatedirs_C)
                             size += returned;
@@ -414,14 +439,14 @@ long long int seekdirec(char *currentdir, int depth)
                             if (depth > 0)
                             {
                                 //printf("[%d]\t", depth);
-    				//printf("acom: %lli\n",size);
-    				//printf("file: %li\n",status.st_size);
+                                //printf("acom: %lli\n",size);
+                                //printf("file: %li\n",status.st_size);
                                 long long int temporary = sizeAttribution(&status);
                                 print(temporary, workTable);
                             }
                         }
                     }
-		    else
+                    else
                     {
                         if (VERBOSE)
                             printf("    [INFO] Directory '%s' is a regular file ....... OK!\n", workTable);
@@ -451,7 +476,7 @@ long long int seekdirec(char *currentdir, int depth)
     {
         print(size, workTable);
     }
-    //sleep(1);
+    sleep(1);
     int status_exit;
     /*
     printf("Threads: %i\n",num_thread);
@@ -473,8 +498,6 @@ int main(int argc, char *argv[])
     tags.maxDepth_C = CUSTOM_INF;
     tags.countLink_C = 1;
     tags.blockSize_C = 1024;
-
-    pid_t pid = getpid();
 
     argvG = argv;
     argcG = argc;
