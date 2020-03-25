@@ -46,7 +46,7 @@ cTags tags = {0};
 long int seekdirec(char *currentdir, int depth);
 int createProcess(char *currentdir, int depth);
 void printTags();
-long int sizeAttribution(struct stat *temp);
+long long int sizeAttribution(struct stat *temp);
 long int dereferenceLink(char *workTable, int depth);
 void sigintHandler(int sig);
 void initSigaction();
@@ -165,7 +165,7 @@ void printTags()
 }
 
 /* Attributes sizes based on the activated tags. */
-long int sizeAttribution(struct stat *temp)
+long long int sizeAttribution(struct stat *temp)
 {
 
     long long int value;
@@ -409,7 +409,7 @@ long int seekdirec(char *currentdir, int depth)
     {
         if (tags.bytesDisplay_C)
         {
-            float value = size;
+            long long int value = size;
             value /= tags.blockSize_C;
             int out = value;
             if (value > out)
