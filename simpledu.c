@@ -434,12 +434,13 @@ long int seekdirec(char *currentdir, int depth)
     }
     sleep(1);
     int status_exit;
+    /*
     printf("Threads: %i\n",num_thread);
     while(num_thread){
     	pid_t pid=wait(&status_exit);
 	printActionInfoEXIT(&pid,status_exit);
 	num_thread--;
-    }
+    }*/
     return size;
 }
 
