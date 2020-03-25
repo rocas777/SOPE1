@@ -164,16 +164,7 @@ void printTags()
     printf("tags.maxDepth_C = %d\n", tags.maxDepth_C);
 }
 
-/* Attributes sizes based on the activated tags. */
-long long int sizeAttribution(struct stat *temp)
-{
 
-    long long int value;
-
-    value = (temp->st_size);
-
-    return value;
-}
 
 /* Signals */
 void sigintHandler(int sig)
@@ -284,14 +275,35 @@ int createProcess(char *currentdir, int depth)
 
 void print(long int size, char *workTable)
 {
-    if (tags.bytesDisplay_C)
-    {
-        printf("%ld\t%s\n", size, workTable);
+    //if(tags.bytesDisplay_C){
+	long long out = size;
+	//printf("%i\n",tags.blockSize_C);
+	size /= tags.blockSize_C;
+	if(out%tags.blockSize_C)
+		size++;
+    //}
+    printf("%ld\t%s\n", size, workTable);
+}
+
+/* Attributes sizes based on the activated tags. */
+long long int sizeAttribution(struct stat *temp)
+{
+
+    long long int value;
+
+    if(tags.bytesDisplay_C)
+	value = temp->st_size;
+    else{
+	value = temp->st_blocks * BLOCK_SIZE_STAT;
+	//long long out = value;
+	//printf("%i\n",tags.blockSize_C);
+	//value /= tags.blockSize_C;
+	//if(out%tags.blockSize_C)
+	//	value++;
+	
     }
-    else
-    {
-        printf("%ld\t%s\n", size, workTable);
-    }
+
+    return value;
 }
 
 /* Reads all files in a given directory and displays identically the way 'du' does */
@@ -407,20 +419,7 @@ long int seekdirec(char *currentdir, int depth)
 
     if (depth >= 0)
     {
-        if (tags.bytesDisplay_C)
-        {
-            long long int value = size;
-            value /= tags.blockSize_C;
-            int out = value;
-            if (value > out)
-                value++;
-            long int temp_out = value;
-            printf("%ld\t%s\n", temp_out, workTable);
-        }
-        else
-        {
-            printf("%ld\t%s\n", size, workTable);
-        }
+            print(size, workTable);
     }
     //sleep(1);
 
@@ -436,10 +435,9 @@ int main(int argc, char *argv[])
     char directoryLine[MAX_SIZE] = DIRECTORY;
     tags.maxDepth_C = CUSTOM_INF;
     tags.countLink_C = 1;
-    tags.blockSize_C = BLOCK_SIZE_STAT;
+    tags.blockSize_C = 1024;
 	
     pid_t pid=getpid();
-	
        
     argvG=argv;
     argcG=argc;
