@@ -77,7 +77,7 @@ double timeSinceStartTime() //Returns time in miliseconds since begging of progr
 
 void printInsantPid(pid_t *pid)
 {
-    fprintf(log_filename, "%0.2f - %d - ", timeSinceStartTime(), *pid);
+    fprintf(log_filename, "%0.2f -\t %d -\t ", timeSinceStartTime(), *pid);
 }
 
 void printActionInfoCREATE(pid_t *pid, int argc, char *argv[])
@@ -96,42 +96,42 @@ void printActionInfoCREATE(pid_t *pid, int argc, char *argv[])
 void printActionInfoEXIT(pid_t *pid, int exit)
 {
     printInsantPid(pid);
-    fprintf(log_filename, "EXIT - %i\n", exit);
+    fprintf(log_filename, "EXIT -\t %i\n", exit);
     fflush(log_filename);
 }
 
 void printActionInfoRECV_SIGNAL(pid_t *pid, char *signal)
 {
     printInsantPid(pid);
-    fprintf(log_filename, "RECV_SIGNAL - %s\n", signal);
+    fprintf(log_filename, "RECV_SIGNAL -\t %s\n", signal);
     fflush(log_filename);
 }
 
 void printActionInfoSEND_SIGNAL(pid_t *pid, char *signal, pid_t destination)
 {
     printInsantPid(pid);
-    fprintf(log_filename, "SEND_SIGNAL - %s \"%d\"\n", signal, destination);
+    fprintf(log_filename, "SEND_SIGNAL -\t %s \"%d\"\n", signal, destination);
     fflush(log_filename);
 }
 
 void printActionInfoRECV_PIP(pid_t *pid, char *message)
 {
     printInsantPid(pid);
-    fprintf(log_filename, "RECV_PIP - %s\n", message);
+    fprintf(log_filename, "RECV_PIP -\t %s\n", message);
     fflush(log_filename);
 }
 
 void printActionInfoSEND_PIPE(pid_t *pid, char *message)
 {
     printInsantPid(pid);
-    fprintf(log_filename, "SEND_PIPE - %s\n", message);
+    fprintf(log_filename, "SEND_PIPE -\t %s\n", message);
     fflush(log_filename);
 }
 
 void printActionInfoENTRY(pid_t *pid, int argc, char *argv[])
 {
     printInsantPid(pid);
-    fprintf(log_filename, "ENTRY - ");
+    fprintf(log_filename, "ENTRY -\t ");
     fflush(log_filename);
 }
 
