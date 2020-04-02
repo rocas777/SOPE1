@@ -23,6 +23,8 @@
 #define BLOCK_SIZE_STAT 512
 #define BLOCK_SIZE_PRINT 1024
 
+int num_sons=0;
+
 pid_t pgid; //process id for the parent of child's process group.
 
 struct timeval *startTime; //Time of beggining of program
@@ -259,6 +261,7 @@ long long int createProcess(char *currentdir, int depth)
     }
     else if (pid > 0)
     {                 /* pai */
+	num_sons++;
         close(fd[1]); /* fecha lado emissor do pipe */
 
         if (pgid == 0) // se não tiver pai (thread principal)
@@ -273,12 +276,13 @@ long long int createProcess(char *currentdir, int depth)
 
         // num_thread++;
 
-        int status = -1;
-        while (status != 0)
-        {
-            waitpid(pid, &status, 0);
-            printActionInfoEXIT(&pid, status);
-        }
+	int status=-1;
+	while (status != 0)
+    	{
+        	int pid=waitpid(-1, &status, 0);
+        	printActionInfoEXIT(&pid, status);
+		num_sons--;
+	}
 
         if (pgid == pid) // se o grupo de processos acabar, se for necessário, é preciso criar um novo.
         {
@@ -294,6 +298,7 @@ long long int createProcess(char *currentdir, int depth)
     }
     else
     { /* filho */
+	num_sons=0;
         initSigactionSIG_IGN();
         pid_t pid_p = getpid();
         if (pgid == 0)
@@ -316,14 +321,11 @@ long long int createProcess(char *currentdir, int depth)
 
 void print(long long int size, char *workTable)
 {
-    //if(tags.bytesDisplay_C){
     long long int out = size;
-    //printf("%i\n",tags.blockSize_C);
     size /= tags.blockSize_C;
     if (out % tags.blockSize_C)
         size++;
-    //}
-    // printf("%d\tgroup %d\tpgid %d\t", getpid(), getpgrp(), pgid);
+
     printf("%lld\t%s\n", size, workTable);
 }
 
@@ -338,13 +340,7 @@ long long int sizeAttribution(struct stat *temp)
     else
     {
         value = temp->st_blocks * BLOCK_SIZE_STAT;
-        //long long out = value;
-        //printf("%i\n",tags.blockSize_C);
-        //value /= tags.blockSize_C;
-        //if(out%tags.blockSize_C)
-        //	value++;
     }
-    //printf("%lli\n",value);
     return value;
 }
 
@@ -477,7 +473,7 @@ long long int seekdirec(char *currentdir, int depth)
         print(size, workTable);
     }
 
-    sleep(0.1);
+    //sleep(0.1);
     int status_exit;
     /*
     printf("Threads: %i\n",num_thread);
@@ -553,7 +549,7 @@ int main(int argc, char *argv[])
         }
         else if (strcmp(argv[i], "-l") == 0 || strcmp(argv[i], "--count-links") == 0)
         {
-            // Do thing
+            
         }
         else if (strcmp(argv[i], "-L") == 0 || strncmp(argv[i], "--dereference", 13) == 0)
         {
