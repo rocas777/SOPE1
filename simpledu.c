@@ -186,14 +186,15 @@ void sigintHandler(int sig)
         kill(-pgid, SIGSTOP);
     }
 
-    int i = -1;
-    while (i != 0 && i != 1)
+    char i[2];
+    while (i[0] != '0' && i[0] != '1')
     {
-        printf("0 - Continue \n 1 - Terminate Program\n");
-        scanf("%d", &i);
+        printf("0 - Continue \n1 - Terminate Program\n\n");
+	//int fd=(int)(stdin);
+        read(0, i, 2);
     }
 
-    if (i == 0)
+    if (i[0] == '0')
     {
         if (pgid != 0)
         {
