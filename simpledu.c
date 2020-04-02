@@ -75,7 +75,7 @@ double timeSinceStartTime() //Returns time in miliseconds since begging of progr
 
 void printInsantPid(pid_t *pid)
 {
-    fprintf(log_filename, "%0.2f -\t %d -\t ", timeSinceStartTime(), *pid);
+    fprintf(log_filename, "%0.2f -\t %d -\t\n", timeSinceStartTime(), *pid);
 }
 
 void printActionInfoCREATE(pid_t *pid, int argc, char *argv[])
@@ -126,10 +126,9 @@ void printActionInfoSEND_PIPE(pid_t *pid, char *message)
     fflush(log_filename);
 }
 
-void printActionInfoENTRY(pid_t *pid, int argc, char *argv[])
+void printActionInfoENTRY(long long int bytes,char path[])
 {
-    printInsantPid(pid);
-    fprintf(log_filename, "ENTRY -\t ");
+    fprintf(log_filename, "ENTRY -\t bytes\t%s\n",path);
     fflush(log_filename);
 }
 
@@ -407,14 +406,15 @@ long long int seekdirec(char *currentdir, int depth)
                         if (tags.dereference_C == 0)
                         {
                             // Only considers the file's own size
-                            if (tags.allFiles_C)
+                            if (depth > 0 )
                             {
-                                if (depth > 0)
+                                long long int temporary = sizeAttribution(&status);
+                                if (tags.allFiles_C )
                                 {
                                     //printf("[%d]\t", depth);
-                                    long long int temporary = sizeAttribution(&status);
                                     print(temporary, workTable);
                                 }
+				printActionInfoENTRY(temporary,workTable);
                             }
                             size += sizeAttribution(&status);
                         }
@@ -430,16 +430,17 @@ long long int seekdirec(char *currentdir, int depth)
                         if (VERBOSE)
                             printf("    [INFO] Directory '%s' is a regular file ....... OK!\n", workTable);
                         size += sizeAttribution(&status);
-                        if (tags.allFiles_C)
+                        if (depth > 0)
                         {
-                            if (depth > 0)
+                            long long int temporary = sizeAttribution(&status);
+                            if (tags.allFiles_C)
                             {
                                 //printf("[%d]\t", depth);
                                 //printf("acom: %lli\n",size);
                                 //printf("file: %li\n",status.st_size);
-                                long long int temporary = sizeAttribution(&status);
                                 print(temporary, workTable);
                             }
+			    printActionInfoENTRY(temporary,workTable);
                         }
                     }
                     else
@@ -447,13 +448,14 @@ long long int seekdirec(char *currentdir, int depth)
                         if (VERBOSE)
                             printf("    [INFO] Directory '%s' is a regular file ....... OK!\n", workTable);
                         size += sizeAttribution(&status);
-                        if (tags.allFiles_C)
+                        if (depth > 0)
                         {
-                            if (depth > 0)
+                            long long int temporary = sizeAttribution(&status);
+                            if (tags.allFiles_C)
                             {
-                                long long int temporary = sizeAttribution(&status);
                                 print(temporary, workTable);
                             }
+			    printActionInfoENTRY(temporary,workTable);
                         }
                     }
                 }
@@ -471,6 +473,7 @@ long long int seekdirec(char *currentdir, int depth)
     if (depth >= 0)
     {
         print(size, workTable);
+	printActionInfoENTRY(size,workTable);
     }
 
     //sleep(0.1);
