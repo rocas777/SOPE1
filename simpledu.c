@@ -129,7 +129,7 @@ void printActionInfoSEND_PIPE(pid_t *pid, char *message)
 void printActionInfoENTRY(pid_t *pid, long long int bytes, char path[])
 {
     printInsantPid(pid);
-    fprintf(log_filename, "ENTRY - bytes\t%s\n", path);
+    fprintf(log_filename, "ENTRY - %lld %s\n",bytes, path);
     fflush(log_filename);
 }
 
