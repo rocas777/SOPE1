@@ -23,7 +23,7 @@
 #define BLOCK_SIZE_STAT 512
 #define BLOCK_SIZE_PRINT 1024
 
-int num_sons=0;
+int num_sons = 0;
 
 pid_t pgid; //process id for the parent of child's process group.
 
@@ -75,13 +75,13 @@ double timeSinceStartTime() //Returns time in miliseconds since begging of progr
 
 void printInsantPid(pid_t *pid)
 {
-    fprintf(log_filename, "%0.2f -\t %d -\t\n", timeSinceStartTime(), *pid);
+    fprintf(log_filename, "%0.2f - %d - ", timeSinceStartTime(), *pid);
 }
 
 void printActionInfoCREATE(pid_t *pid, int argc, char *argv[])
 {
     printInsantPid(pid);
-    fprintf(log_filename, "CREATE -\t");
+    fprintf(log_filename, "CREATE - ");
     int i = 1;
     for (; i < argc - 1; i++)
     {
@@ -94,41 +94,42 @@ void printActionInfoCREATE(pid_t *pid, int argc, char *argv[])
 void printActionInfoEXIT(pid_t *pid, int exit)
 {
     printInsantPid(pid);
-    fprintf(log_filename, "EXIT -\t\t %i\n", exit);
+    fprintf(log_filename, "EXIT - %i\n", exit);
     fflush(log_filename);
 }
 
 void printActionInfoRECV_SIGNAL(pid_t *pid, char *signal)
 {
     printInsantPid(pid);
-    fprintf(log_filename, "RECV_SIGNAL -\t %s\n", signal);
+    fprintf(log_filename, "RECV_SIGNAL - %s\n", signal);
     fflush(log_filename);
 }
 
 void printActionInfoSEND_SIGNAL(pid_t *pid, char *signal, pid_t destination)
 {
     printInsantPid(pid);
-    fprintf(log_filename, "SEND_SIGNAL -\t %s \"%d\"\n", signal, destination);
+    fprintf(log_filename, "SEND_SIGNAL - %s \"%d\"\n", signal, destination);
     fflush(log_filename);
 }
 
 void printActionInfoRECV_PIP(pid_t *pid, char *message)
 {
     printInsantPid(pid);
-    fprintf(log_filename, "RECV_PIP -\t %s\n", message);
+    fprintf(log_filename, "RECV_PIP - %s\n", message);
     fflush(log_filename);
 }
 
 void printActionInfoSEND_PIPE(pid_t *pid, char *message)
 {
     printInsantPid(pid);
-    fprintf(log_filename, "SEND_PIPE -\t %s\n", message);
+    fprintf(log_filename, "SEND_PIPE - %s\n", message);
     fflush(log_filename);
 }
 
-void printActionInfoENTRY(long long int bytes,char path[])
+void printActionInfoENTRY(pid_t *pid, long long int bytes, char path[])
 {
-    fprintf(log_filename, "ENTRY -\t bytes\t%s\n",path);
+    printInsantPid(pid);
+    fprintf(log_filename, "ENTRY - bytes\t%s\n", path);
     fflush(log_filename);
 }
 
@@ -190,7 +191,7 @@ void sigintHandler(int sig)
     while (i[0] != '0' && i[0] != '1')
     {
         printf("0 - Continue \n1 - Terminate Program\n\n");
-	//int fd=(int)(stdin);
+        //int fd=(int)(stdin);
         read(0, i, 2);
     }
 
@@ -260,8 +261,8 @@ long long int createProcess(char *currentdir, int depth)
         exit(2);
     }
     else if (pid > 0)
-    {                 /* pai */
-	num_sons++;
+    { /* pai */
+        num_sons++;
         close(fd[1]); /* fecha lado emissor do pipe */
 
         if (pgid == 0) // se não tiver pai (thread principal)
@@ -276,13 +277,13 @@ long long int createProcess(char *currentdir, int depth)
 
         // num_thread++;
 
-	int status=-1;
-	while (status != 0)
-    	{
-        	int pid=waitpid(-1, &status, 0);
-        	printActionInfoEXIT(&pid, status);
-		num_sons--;
-	}
+        int status = -1;
+        while (status != 0)
+        {
+            int pid = waitpid(-1, &status, 0);
+            printActionInfoEXIT(&pid, status);
+            num_sons--;
+        }
 
         if (pgid == pid) // se o grupo de processos acabar, se for necessário, é preciso criar um novo.
         {
@@ -298,7 +299,7 @@ long long int createProcess(char *currentdir, int depth)
     }
     else
     { /* filho */
-	num_sons=0;
+        num_sons = 0;
         initSigactionSIG_IGN();
         pid_t pid_p = getpid();
         if (pgid == 0)
@@ -347,6 +348,8 @@ long long int sizeAttribution(struct stat *temp)
 /* Reads all files in a given directory and displays identically the way 'du' does */
 long long int seekdirec(char *currentdir, int depth)
 {
+    pid_t pid_p = getpid();
+
     if (VERBOSE)
         printf("    [INFO] Received address '%s' ....... OK!\n", currentdir);
 
@@ -407,15 +410,15 @@ long long int seekdirec(char *currentdir, int depth)
                         if (tags.dereference_C == 0)
                         {
                             // Only considers the file's own size
-                            if (depth > 0 )
+                            if (depth > 0)
                             {
                                 long long int temporary = sizeAttribution(&status);
-                                if (tags.allFiles_C )
+                                if (tags.allFiles_C)
                                 {
                                     //printf("[%d]\t", depth);
                                     print(temporary, workTable);
                                 }
-				printActionInfoENTRY(temporary,workTable);
+                                printActionInfoENTRY(&pid_p, temporary, workTable);
                             }
                             size += sizeAttribution(&status);
                         }
@@ -441,7 +444,7 @@ long long int seekdirec(char *currentdir, int depth)
                                 //printf("file: %li\n",status.st_size);
                                 print(temporary, workTable);
                             }
-			    printActionInfoENTRY(temporary,workTable);
+                            printActionInfoENTRY(&pid_p, temporary, workTable);
                         }
                     }
                     else
@@ -456,7 +459,7 @@ long long int seekdirec(char *currentdir, int depth)
                             {
                                 print(temporary, workTable);
                             }
-			    printActionInfoENTRY(temporary,workTable);
+                            printActionInfoENTRY(&pid_p, temporary, workTable);
                         }
                     }
                 }
@@ -474,7 +477,7 @@ long long int seekdirec(char *currentdir, int depth)
     if (depth >= 0)
     {
         print(size, workTable);
-	printActionInfoENTRY(size,workTable);
+        printActionInfoENTRY(&pid_p, size, workTable);
     }
 
     //sleep(0.1);
@@ -553,7 +556,6 @@ int main(int argc, char *argv[])
         }
         else if (strcmp(argv[i], "-l") == 0 || strcmp(argv[i], "--count-links") == 0)
         {
-            
         }
         else if (strcmp(argv[i], "-L") == 0 || strncmp(argv[i], "--dereference", 13) == 0)
         {
