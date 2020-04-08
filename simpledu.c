@@ -23,7 +23,7 @@
 #define BLOCK_SIZE_STAT 512
 #define BLOCK_SIZE_PRINT 1024
 
-int num_sons = 0;
+#define MAX_SIZE_ARR 1000        // size of fd_arr and pgid
 
 pid_t *pgid; //process id array for the parent of child's process group.
 int num_pgid; //number of process groups
@@ -51,12 +51,25 @@ cTags tags = {0};
 
 // Function prototypes:
 
-// int num_thread = 0;
 long long int seekdirec(char *currentdir, int depth);
 
 void createProcess(char *currentdir, int depth, int fd[2]);
 
+void read_fd_arr(pid_t *pid_p, long long int *size);
+
+void read_info_pipe(pid_t *pid_p, long long int *returned);
+
+void send_info_pipe(pid_t *pid_p, int fd_1, long long int *size);
+
+void wait_child(pid_t *pid_p);
+
+void close_fd_0(int fd);
+
+void close_fd_1(int fd);
+
 void printTags();
+
+void print(long long int size, char *workTable);
 
 long long int sizeAttribution(struct stat *temp);
 
@@ -66,11 +79,37 @@ void sigintHandler(int sig);
 
 void initSigaction();
 
-void initSigactionSIGIGN();
+void initSigactionSIG_IGN();
+
+void init_fd_arr();
+
+void init_log_file();
+
+void init_flags(int argc, char *argv[], char directoryLine[MAX_SIZE]);
+
+void init(int argc, char *argv[], char directoryLine[MAX_SIZE]);
+
+void init_child(pid_t *pid_p);
+
+
+double timeSinceStartTime();
 
 void printInstantPid(pid_t *pid);
 
-double timeSinceStartTime();
+void printActionInfoCREATE(pid_t *pid, int argc, char *argv[]);
+
+void printActionInfoEXIT(pid_t *pid, int exit);
+
+void printActionInfoRECV_SIGNAL(pid_t *pid, char *signal);
+
+void printActionInfoSEND_SIGNAL(pid_t *pid, char *signal, pid_t destination);
+
+void printActionInfoRECV_PIP(pid_t *pid, char *message);
+
+void printActionInfoSEND_PIPE(pid_t *pid, char *message);
+
+void printActionInfoENTRY(pid_t *pid, long long int bytes, char path[]);
+
 
 int argcG;
 char **argvG;
@@ -140,8 +179,6 @@ void printActionInfoENTRY(pid_t *pid, long long int bytes, char path[]) {
 
 /* Accesses the link */
 
-int blockSize = 512;
-
 long long int dereferenceLink(char *workTable, int depth) {
     struct stat status;
     long long int sizeRep;
@@ -151,9 +188,8 @@ long long int dereferenceLink(char *workTable, int depth) {
     if (!lstat(megaPath, &status)) {
         sizeRep = sizeAttribution(&status);
         if (depth > 0) {
-            //printf("[%d]\t", depth);
             printf("%lld\t%s\n", sizeRep, workTable);
-    	    fflush(stdout);
+	    fflush(stdout);
         }
         return sizeRep;
     } else {
@@ -165,21 +201,13 @@ long long int dereferenceLink(char *workTable, int depth) {
 /* [Used mostly for debugging] - Prints tags */
 void printTags() {
     printf("Printing variables:\n");
-    fflush(stdout);
     printf("tags.allFiles_C = %d\n", tags.allFiles_C);
-    fflush(stdout);
     printf("tags.bytesDisplay_C = %d\n", tags.bytesDisplay_C);
-    fflush(stdout);
     printf("tags.blockSize_C = %d\n", tags.blockSize_C);
-    fflush(stdout);
     printf("tags.countLink_C = %d\n", tags.countLink_C);
-    fflush(stdout);
     printf("tags.dereference_C = %d\n", tags.dereference_C);
-    fflush(stdout);
     printf("tags.separatedirs_C = %d\n", tags.separatedirs_C);
-    fflush(stdout);
     printf("tags.maxDepth_C = %d\n", tags.maxDepth_C);
-    fflush(stdout);
 }
 
 /* Signals */
@@ -198,7 +226,6 @@ void sigintHandler(int sig) {
     char i[2];
     while (i[0] != '0' && i[0] != '1') {
         printf("0 - Continue \n1 - Terminate Program\n\n");
-        //int fd=(int)(stdin);
         read(0, i, 2);
     }
 
@@ -243,62 +270,104 @@ void initSigaction() {
     sigaction(SIGINT, &action, NULL);
 }
 
-/* Creates a process. */
-void createProcess(char *currentdir, int depth, int fd[2]) {
-    fflush(stdout);
-    long long int n;
-    pid_t pid;
+void close_fd_0(int fd) {
+    if (close(fd) < 0) { /* fecha lado receptor do pipe */
+        perror("Failed to close read end of pipe");
+    }
+}
+
+void close_fd_1(int fd) {
+    if (close(fd) < 0) { /* fecha lado emissor do pipe */
+        perror("Failed to close write end of pipe");
+    }
+}
+
+void wait_child(pid_t *pid_p) {
+    int status = -1;
+    while (status != 0) {
+        int pid = wait(&status);
+        printActionInfoEXIT(&pid, status);
+    }
+    num_pgid--;
+}
+
+void read_info_pipe(pid_t *pid_p, long long int *returned) {
     char digitsre[DIGITS_MAX];
     memset(digitsre, '\0', DIGITS_MAX);
 
+    read(fd_arr[num_fd][0], digitsre, DIGITS_MAX);
+    printActionInfoRECV_PIP(pid_p, digitsre);
+    *returned = atoll(digitsre);
+}
+
+void read_fd_arr(pid_t *pid_p, long long int *size) {
+    while (num_fd > 0) {
+        num_fd--;
+
+        wait_child(pid_p);
+
+        long long int returned = 0;
+
+        read_info_pipe(pid_p, &returned);
+
+        close_fd_0(fd_arr[num_fd][0]);
+
+        if (!tags.separatedirs_C) {
+            *size += returned;
+        }
+    }
+}
+
+void send_info_pipe(pid_t *pid_p, int fd_1, long long int *size) {
+    char digitsre[DIGITS_MAX];
+    memset(digitsre, '\0', DIGITS_MAX);
+
+    sprintf(digitsre, "%lld", *size);
+    write(fd_1, digitsre, strlen(digitsre));
+    printActionInfoSEND_PIPE(pid_p, digitsre);
+}
+
+void init_child(pid_t *pid_p) {
+    init_fd_arr();
+
+    num_fd = 0;
+    initSigactionSIG_IGN();
+    if (num_pgid >= 0) {
+        setpgrp(); // cria novo grupo de processos para o filho e filhos deste
+    }
+    num_pgid = -1;
+    printActionInfoCREATE(pid_p, argcG, argvG);
+}
+
+/* Creates a process. */
+void createProcess(char *currentdir, int depth, int fd[2]) {
+    fflush(stdout);
+    pid_t pid;
+
     if ((pid = fork()) < 0) {
         fprintf(stderr, "fork error\n");
-    	fflush(stderr);
         exit(2);
     } else if (pid > 0) { /* pai */
-        if (close(fd[1]) < 0) { /* fecha lado emissor do pipe */
-            perror("Failed to close write end of pipe");
-        }
+        close_fd_1(fd[1]);
 
-        if (num_pgid != -1) { // se não tiver pai (thread principal)
+        if (num_pgid != -1) { // se não existir pai (thread principal)
             pgid[num_pgid] = pid;
             num_pgid++;
         }
 
     } else { /* filho */
-        if (close(fd[0]) < 0) { /* fecha lado receptor do pipe */
-            perror("Failed to close read end of pipe");
-        }
-        fd_arr = (int **) malloc(sizeof(int *) * 1000 + sizeof(int) * 2 * 1000);
-        int *ptr = (int *) (fd_arr + 1000);
-        for (int i = 0; i < 1000; i++) {
-            fd_arr[i] = ptr + i * 2;
-        }
-
-        num_fd = 0;
-        initSigactionSIG_IGN();
         pid_t pid_p = getpid();
-        if (num_pgid >= 0) {
-            setpgrp(); // cria novo grupo de processos para o filho e filhos deste
-        }
-        num_pgid = -1;
-        printActionInfoCREATE(&pid_p, argcG, argvG);
 
+        close_fd_0(fd[0]);
 
+        init_child(&pid_p);
+
+        long long int size;
         depth--;
-        n = seekdirec(currentdir, depth);
-        sprintf(digitsre, "%lld", n);
-        write(fd[1], digitsre, strlen(digitsre));
-        printActionInfoSEND_PIPE(&pid_p, digitsre);
+        size = seekdirec(currentdir, depth);
+        send_info_pipe(&pid_p, fd[1], &size);
 
-        //        printf("FILHO: %d fd0:\t%p\t%d\t", pid_p,(void *) fd, fd[0]);
-        //        printf("valor: %lld\n", n);
-
-
-        if (close(fd[1]) < 0) { /* fecha lado emissor do pipe */
-            perror("Failed to close write end of pipe");
-        }
-        fflush(stdout);
+        close_fd_1(fd[1]);
 
         exit(0);
     }
@@ -327,15 +396,13 @@ long long int sizeAttribution(struct stat *temp) {
     return value;
 }
 
+
 /* Reads all files in a given directory and displays identically the way 'du' does */
 long long int seekdirec(char *currentdir, int depth) {
     pid_t pid_p = getpid();
 
-    if (VERBOSE){
+    if (VERBOSE)
         printf("    [INFO] Received address '%s' ....... OK!\n", currentdir);
-    	fflush(stdout);
-
-    }
 
     char workTable[MAX_SIZE];
     memset(workTable, '\0', MAX_SIZE);
@@ -357,12 +424,11 @@ long long int seekdirec(char *currentdir, int depth) {
         perror("Error: ");
         return -1;
     } else {
-        if (VERBOSE){
+        if (VERBOSE)
             printf("    [INFO] Directory '%s' was successfully loaded ....... OK!\n", workTable);
-    fflush(stdout);}
 
         while ((dira = readdir(d)) != NULL) {
-            //            sleep(1);
+//            sleep(1);
 
             strcpy(workTable, currentdir);
             strcat(workTable, "/");
@@ -379,47 +445,18 @@ long long int seekdirec(char *currentdir, int depth) {
 
                         if (pipe(fd_arr[num_fd]) < 0) {
                             fprintf(stderr, "pipe error\n");
-    			    fflush(stderr);
                             exit(1);
                         }
                         int *fd;
                         fd = fd_arr[num_fd];
 
                         createProcess(workTable, depth, fd);
-
                         num_fd++;
-
-
-			if(num_fd>0)
-                        while (num_fd>100000) {
-                            num_fd--;
-
-                            int status = -1;
-                            while (status != 0) {
-                                int pid = wait(&status);
-                                printActionInfoEXIT(&pid, status);
-                                //            printf("num_fd:\t%d\t", num_fd);
-                            }
-                            num_pgid--;
-
-                            long long int returned = 0;
-                            char digitsre[DIGITS_MAX];
-                            memset(digitsre, '\0', DIGITS_MAX);
-
-                            read(fd_arr[num_fd][0], digitsre, DIGITS_MAX);
-                            printActionInfoRECV_PIP(&pid_p, digitsre);
-                            returned = atoll(digitsre);
-
-                            if (close(fd_arr[num_fd][0]) < 0) { /* fecha lado receptor do pipe */
-                                perror("Failed to close read end of pipe");
-                            }
-
-                            if (!tags.separatedirs_C)
-                                size += returned;
-                        }
+			if(num_fd>10)
+				read_fd_arr(&pid_p, &size);
 
                     }
-                    // If it is a link:
+                        // If it is a link:
                     else if (S_ISLNK(status.st_mode)) {
                         if (VERBOSE)
                             printf("    [INFO] Directory '%s' is a symbolic link ....... OK!\n", workTable);
@@ -439,7 +476,7 @@ long long int seekdirec(char *currentdir, int depth) {
                             size += dereferenceLink(workTable, depth);
                         }
                     }
-                    // If it is a regular file:
+                        // If it is a regular file:
                     else if (S_ISREG(status.st_mode)) {
                         if (VERBOSE)
                             printf("    [INFO] Directory '%s' is a regular file ....... OK!\n", workTable);
@@ -474,32 +511,7 @@ long long int seekdirec(char *currentdir, int depth) {
         }//fazer função wait processes e adiocionar aqui a informação
     }
 
-    while (num_fd > 0) {
-        num_fd--;
-
-        int status = -1;
-        while (status != 0) {
-            int pid = wait(&status);
-            printActionInfoEXIT(&pid, status);
-            //            printf("num_fd:\t%d\t", num_fd);
-        }
-        num_pgid--;
-
-        long long int returned = 0;
-        char digitsre[DIGITS_MAX];
-        memset(digitsre, '\0', DIGITS_MAX);
-
-        read(fd_arr[num_fd][0], digitsre, DIGITS_MAX);
-        printActionInfoRECV_PIP(&pid_p, digitsre);
-        returned = atoll(digitsre);
-
-        if (close(fd_arr[num_fd][0]) < 0) { /* fecha lado receptor do pipe */
-            perror("Failed to close read end of pipe");
-        }
-
-        if (!tags.separatedirs_C)
-            size += returned;
-    }
+    read_fd_arr(&pid_p, &size);
 
     closedir(d);
     strcpy(workTable, currentdir);
@@ -509,49 +521,35 @@ long long int seekdirec(char *currentdir, int depth) {
         printActionInfoENTRY(&pid_p, size, workTable);
     }
 
-    int status_exit;
-    /*
-    printf("Threads: %i\n",num_thread);
-    while(num_thread){
-        pid_t pid=wait(&status_exit);
-        printActionInfoEXIT(&pid,status_exit);
-        num_thread--;
-    }*/
-    //printf("dir: %lli\n",size);
     return size;
 }
 
-int main(int argc, char *argv[]) {
-    startTime = malloc(sizeof(struct timeval));
-    gettimeofday(startTime, 0);
+void init_fd_arr() {
+    fd_arr = (int **) malloc(sizeof(int *) * MAX_SIZE_ARR + sizeof(int) * 2 * MAX_SIZE_ARR);
+    int *ptr = (int *) (fd_arr + MAX_SIZE_ARR);
+    for (int i = 0; i < MAX_SIZE_ARR; i++) {
+        fd_arr[i] = ptr + i * 2;
+    }
+    num_fd = 0;
+}
 
-    char directoryLine[MAX_SIZE] = DIRECTORY;
+void init_log_file() {
+    if ((log_filename = fopen("../LOG_FILENAME", "w")) == NULL) {
+        int errsv = errno;
+        printf("%d\n", errsv);
+	fflush(stdout);
+        perror(strerror(errsv));
+        exit(1);
+    }
+}
+
+void init_flags(int argc, char *argv[], char directoryLine[MAX_SIZE]) {
     tags.maxDepth_C = CUSTOM_INF;
     tags.countLink_C = 1;
     tags.blockSize_C = 1024;
 
     argvG = argv;
     argcG = argc;
-
-    pgid = (int *) malloc(sizeof(int) * 1000);
-    num_pgid = 0;
-
-    fd_arr = (int **) malloc(sizeof(int *) * 1000 + sizeof(int) * 2 * 1000);
-    int *ptr = (int *) (fd_arr + 1000);
-    for (int i = 0; i < 1000; i++) {
-        fd_arr[i] = ptr + i * 2;
-    }
-    num_fd = 0;
-
-    initSigaction();
-
-    if ((log_filename = fopen("/LOG_FILENAME", "w")) == NULL) {
-        int errsv = errno;
-        printf("%d\n", errsv);
-    	fflush(stdout);
-        perror(strerror(errsv));
-        exit(1);
-    }
 
     // Set up flags
     for (int i = 1; i < argc; i++) {
@@ -591,8 +589,29 @@ int main(int argc, char *argv[]) {
             strcpy(directoryLine, argv[i]);
         }
     }
+}
 
-    //printTags();
+void init(int argc, char *argv[], char directoryLine[MAX_SIZE]) {
+    startTime = malloc(sizeof(struct timeval));
+    gettimeofday(startTime, 0);
+
+    pgid = (int *) malloc(sizeof(int) * MAX_SIZE_ARR);
+    num_pgid = 0;
+
+    init_fd_arr();
+
+    initSigaction();
+
+    init_log_file();
+
+    init_flags(argc, argv, directoryLine);
+}
+
+int main(int argc, char *argv[]) {
+
+    char directoryLine[MAX_SIZE] = DIRECTORY;
+    init(argc, argv, directoryLine);
+
     seekdirec(directoryLine, tags.maxDepth_C);
 
     fclose(log_filename);
