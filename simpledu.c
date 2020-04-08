@@ -88,6 +88,7 @@ double timeSinceStartTime() //Returns time in milliseconds since begging of prog
 
 void printInstantPid(pid_t *pid) {
     fprintf(log_filename, "%0.2f - %d - ", timeSinceStartTime(), *pid);
+    fflush(log_filename);
 }
 
 void printActionInfoCREATE(pid_t *pid, int argc, char *argv[]) {
@@ -152,6 +153,7 @@ long long int dereferenceLink(char *workTable, int depth) {
         if (depth > 0) {
             //printf("[%d]\t", depth);
             printf("%lld\t%s\n", sizeRep, workTable);
+    	    fflush(stdout);
         }
         return sizeRep;
     } else {
@@ -163,13 +165,21 @@ long long int dereferenceLink(char *workTable, int depth) {
 /* [Used mostly for debugging] - Prints tags */
 void printTags() {
     printf("Printing variables:\n");
+    fflush(stdout);
     printf("tags.allFiles_C = %d\n", tags.allFiles_C);
+    fflush(stdout);
     printf("tags.bytesDisplay_C = %d\n", tags.bytesDisplay_C);
+    fflush(stdout);
     printf("tags.blockSize_C = %d\n", tags.blockSize_C);
+    fflush(stdout);
     printf("tags.countLink_C = %d\n", tags.countLink_C);
+    fflush(stdout);
     printf("tags.dereference_C = %d\n", tags.dereference_C);
+    fflush(stdout);
     printf("tags.separatedirs_C = %d\n", tags.separatedirs_C);
+    fflush(stdout);
     printf("tags.maxDepth_C = %d\n", tags.maxDepth_C);
+    fflush(stdout);
 }
 
 /* Signals */
@@ -243,6 +253,7 @@ void createProcess(char *currentdir, int depth, int fd[2]) {
 
     if ((pid = fork()) < 0) {
         fprintf(stderr, "fork error\n");
+    	fflush(stderr);
         exit(2);
     } else if (pid > 0) { /* pai */
         if (close(fd[1]) < 0) { /* fecha lado emissor do pipe */
@@ -280,8 +291,8 @@ void createProcess(char *currentdir, int depth, int fd[2]) {
         write(fd[1], digitsre, strlen(digitsre));
         printActionInfoSEND_PIPE(&pid_p, digitsre);
 
-//        printf("FILHO: %d fd0:\t%p\t%d\t", pid_p,(void *) fd, fd[0]);
-//        printf("valor: %lld\n", n);
+        //        printf("FILHO: %d fd0:\t%p\t%d\t", pid_p,(void *) fd, fd[0]);
+        //        printf("valor: %lld\n", n);
 
 
         if (close(fd[1]) < 0) { /* fecha lado emissor do pipe */
@@ -300,6 +311,7 @@ void print(long long int size, char *workTable) {
         size++;
 
     printf("%lld\t%s\n", size, workTable);
+    fflush(stdout);
 }
 
 /* Attributes sizes based on the activated tags. */
@@ -319,8 +331,11 @@ long long int sizeAttribution(struct stat *temp) {
 long long int seekdirec(char *currentdir, int depth) {
     pid_t pid_p = getpid();
 
-    if (VERBOSE)
+    if (VERBOSE){
         printf("    [INFO] Received address '%s' ....... OK!\n", currentdir);
+    	fflush(stdout);
+
+    }
 
     char workTable[MAX_SIZE];
     memset(workTable, '\0', MAX_SIZE);
@@ -342,11 +357,12 @@ long long int seekdirec(char *currentdir, int depth) {
         perror("Error: ");
         return -1;
     } else {
-        if (VERBOSE)
+        if (VERBOSE){
             printf("    [INFO] Directory '%s' was successfully loaded ....... OK!\n", workTable);
+    fflush(stdout);}
 
         while ((dira = readdir(d)) != NULL) {
-//            sleep(1);
+            //            sleep(1);
 
             strcpy(workTable, currentdir);
             strcat(workTable, "/");
@@ -363,16 +379,47 @@ long long int seekdirec(char *currentdir, int depth) {
 
                         if (pipe(fd_arr[num_fd]) < 0) {
                             fprintf(stderr, "pipe error\n");
+    			    fflush(stderr);
                             exit(1);
                         }
                         int *fd;
                         fd = fd_arr[num_fd];
 
                         createProcess(workTable, depth, fd);
+
                         num_fd++;
 
+
+			if(num_fd>0)
+                        while (num_fd>100000) {
+                            num_fd--;
+
+                            int status = -1;
+                            while (status != 0) {
+                                int pid = wait(&status);
+                                printActionInfoEXIT(&pid, status);
+                                //            printf("num_fd:\t%d\t", num_fd);
+                            }
+                            num_pgid--;
+
+                            long long int returned = 0;
+                            char digitsre[DIGITS_MAX];
+                            memset(digitsre, '\0', DIGITS_MAX);
+
+                            read(fd_arr[num_fd][0], digitsre, DIGITS_MAX);
+                            printActionInfoRECV_PIP(&pid_p, digitsre);
+                            returned = atoll(digitsre);
+
+                            if (close(fd_arr[num_fd][0]) < 0) { /* fecha lado receptor do pipe */
+                                perror("Failed to close read end of pipe");
+                            }
+
+                            if (!tags.separatedirs_C)
+                                size += returned;
+                        }
+
                     }
-                        // If it is a link:
+                    // If it is a link:
                     else if (S_ISLNK(status.st_mode)) {
                         if (VERBOSE)
                             printf("    [INFO] Directory '%s' is a symbolic link ....... OK!\n", workTable);
@@ -392,7 +439,7 @@ long long int seekdirec(char *currentdir, int depth) {
                             size += dereferenceLink(workTable, depth);
                         }
                     }
-                        // If it is a regular file:
+                    // If it is a regular file:
                     else if (S_ISREG(status.st_mode)) {
                         if (VERBOSE)
                             printf("    [INFO] Directory '%s' is a regular file ....... OK!\n", workTable);
@@ -434,7 +481,7 @@ long long int seekdirec(char *currentdir, int depth) {
         while (status != 0) {
             int pid = wait(&status);
             printActionInfoEXIT(&pid, status);
-//            printf("num_fd:\t%d\t", num_fd);
+            //            printf("num_fd:\t%d\t", num_fd);
         }
         num_pgid--;
 
@@ -466,9 +513,9 @@ long long int seekdirec(char *currentdir, int depth) {
     /*
     printf("Threads: %i\n",num_thread);
     while(num_thread){
-    	pid_t pid=wait(&status_exit);
-	printActionInfoEXIT(&pid,status_exit);
-	num_thread--;
+        pid_t pid=wait(&status_exit);
+        printActionInfoEXIT(&pid,status_exit);
+        num_thread--;
     }*/
     //printf("dir: %lli\n",size);
     return size;
@@ -498,9 +545,10 @@ int main(int argc, char *argv[]) {
 
     initSigaction();
 
-    if ((log_filename = fopen("../LOG_FILENAME", "w")) == NULL) {
+    if ((log_filename = fopen("/LOG_FILENAME", "w")) == NULL) {
         int errsv = errno;
         printf("%d\n", errsv);
+    	fflush(stdout);
         perror(strerror(errsv));
         exit(1);
     }
