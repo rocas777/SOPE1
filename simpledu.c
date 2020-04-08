@@ -54,7 +54,7 @@ cTags tags = {0};
 // int num_thread = 0;
 long long int seekdirec(char *currentdir, int depth);
 
-long long int createProcess(char *currentdir, int depth);
+void createProcess(char *currentdir, int depth, int fd[2]);
 
 void printTags();
 
@@ -234,64 +234,63 @@ void initSigaction() {
 }
 
 /* Creates a process. */
-long long int createProcess(char *currentdir, int depth) {
+void createProcess(char *currentdir, int depth, int fd[2]) {
     fflush(stdout);
     long long int n;
-    int fd[2];
     pid_t pid;
     char digitsre[DIGITS_MAX];
     memset(digitsre, '\0', DIGITS_MAX);
-    fd_arr[num_fd] = malloc(sizeof(int) * 2);
-
-    if (pipe(fd_arr[num_fd]) < 0) {
-        fprintf(stderr, "pipe error\n");
-        exit(1);
-    }
 
     if ((pid = fork()) < 0) {
         fprintf(stderr, "fork error\n");
         exit(2);
     } else if (pid > 0) { /* pai */
-        num_sons++;
-        close(fd_arr[num_fd][1]); /* fecha lado emissor do pipe */
-        num_fd++;
+        if (close(fd[1]) < 0) { /* fecha lado emissor do pipe */
+            perror("Failed to close write end of pipe");
+        }
 
-        if (num_pgid != -1) // se não tiver pai (thread principal)
-        {
+        if (num_pgid != -1) { // se não tiver pai (thread principal)
             pgid[num_pgid] = pid;
             num_pgid++;
         }
 
-        // num_thread++;
-
-//        int status = -1;
-//        while (status != 0) {
-//            int pid = waitpid(-1, &status, 0);
-//            printActionInfoEXIT(&pid, status);
-//            num_sons--;
-//        }
-
     } else { /* filho */
-        num_sons = 0;
+        if (close(fd[0]) < 0) { /* fecha lado receptor do pipe */
+            perror("Failed to close read end of pipe");
+        }
+        fd_arr = (int **) malloc(sizeof(int *) * 1000 + sizeof(int) * 2 * 1000);
+        int *ptr = (int *) (fd_arr + 1000);
+        for (int i = 0; i < 1000; i++) {
+            fd_arr[i] = ptr + i * 2;
+        }
+
         num_fd = 0;
         initSigactionSIG_IGN();
         pid_t pid_p = getpid();
-        if (num_pgid == 0 /*|| pgid[num_pgid] != getpgrp()*/)
+        if (num_pgid >= 0) {
             setpgrp(); // cria novo grupo de processos para o filho e filhos deste
+        }
         num_pgid = -1;
         printActionInfoCREATE(&pid_p, argcG, argvG);
-        close(fd_arr[num_fd][0]); /* fecha lado receptor do pipe */
+
+
         depth--;
         n = seekdirec(currentdir, depth);
         sprintf(digitsre, "%lld", n);
-        write(fd_arr[num_fd][1], digitsre, strlen(digitsre));
+        write(fd[1], digitsre, strlen(digitsre));
         printActionInfoSEND_PIPE(&pid_p, digitsre);
-        close(fd_arr[num_fd][1]); /* fecha lado emissor do pipe */
+
+//        printf("FILHO: %d fd0:\t%p\t%d\t", pid_p,(void *) fd, fd[0]);
+//        printf("valor: %lld\n", n);
+
+
+        if (close(fd[1]) < 0) { /* fecha lado emissor do pipe */
+            perror("Failed to close write end of pipe");
+        }
+        fflush(stdout);
 
         exit(0);
     }
-
-    return n;
 }
 
 void print(long long int size, char *workTable) {
@@ -301,7 +300,6 @@ void print(long long int size, char *workTable) {
         size++;
 
     printf("%lld\t%s\n", size, workTable);
-    fflush(stdout);
 }
 
 /* Attributes sizes based on the activated tags. */
@@ -362,10 +360,16 @@ long long int seekdirec(char *currentdir, int depth) {
                         if (VERBOSE)
                             printf("    [INFO] Directory '%s' is a directory ....... OK! (size: %ld)\n", workTable,
                                    status.st_size);
-//                        long long int returned = 0;
-//                        returned =
-                        createProcess(workTable, depth);
 
+                        if (pipe(fd_arr[num_fd]) < 0) {
+                            fprintf(stderr, "pipe error\n");
+                            exit(1);
+                        }
+                        int *fd;
+                        fd = fd_arr[num_fd];
+
+                        createProcess(workTable, depth, fd);
+                        num_fd++;
 
                     }
                         // If it is a link:
@@ -423,26 +427,28 @@ long long int seekdirec(char *currentdir, int depth) {
         }//fazer função wait processes e adiocionar aqui a informação
     }
 
-    while (num_fd != 0) {
+    while (num_fd > 0) {
         num_fd--;
+
         int status = -1;
         while (status != 0) {
-
             int pid = wait(&status);
             printActionInfoEXIT(&pid, status);
+//            printf("num_fd:\t%d\t", num_fd);
         }
         num_pgid--;
-
 
         long long int returned = 0;
         char digitsre[DIGITS_MAX];
         memset(digitsre, '\0', DIGITS_MAX);
 
         read(fd_arr[num_fd][0], digitsre, DIGITS_MAX);
-
         printActionInfoRECV_PIP(&pid_p, digitsre);
         returned = atoll(digitsre);
-        close(fd_arr[num_fd][0]); /* fecha lado receptor do pipe */
+
+        if (close(fd_arr[num_fd][0]) < 0) { /* fecha lado receptor do pipe */
+            perror("Failed to close read end of pipe");
+        }
 
         if (!tags.separatedirs_C)
             size += returned;
@@ -479,9 +485,15 @@ int main(int argc, char *argv[]) {
 
     argvG = argv;
     argcG = argc;
+
     pgid = (int *) malloc(sizeof(int) * 1000);
     num_pgid = 0;
-    fd_arr = (int **) malloc(sizeof(int *) * 1000);
+
+    fd_arr = (int **) malloc(sizeof(int *) * 1000 + sizeof(int) * 2 * 1000);
+    int *ptr = (int *) (fd_arr + 1000);
+    for (int i = 0; i < 1000; i++) {
+        fd_arr[i] = ptr + i * 2;
+    }
     num_fd = 0;
 
     initSigaction();
