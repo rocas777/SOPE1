@@ -31,7 +31,8 @@ int num_pgid; //number of process groups
 int **fd_arr; //pipe array
 int num_fd; //number of pipes
 
-struct timeval *startTime; //Time of beginning of program
+struct  timeval *startTime; //Time of beginning of program
+struct  timeval secc;
 
 FILE *log_filename; //File
 
@@ -94,7 +95,7 @@ void init_child(pid_t *pid_p);
 
 double timeSinceStartTime();
 
-void printInstantPid(pid_t *pid);
+void printInstantPid(pid_t *pid,char *temp);
 
 void printActionInfoCREATE(pid_t *pid, int argc, char *argv[]);
 
@@ -122,58 +123,73 @@ double timeSinceStartTime() //Returns time in milliseconds since begging of prog
     struct timeval instant;
     gettimeofday(&instant, 0);
 
+    *startTime=secc;
+
     return (double) (instant.tv_sec - startTime->tv_sec) * 1000.0f + (instant.tv_usec - startTime->tv_usec) / 1000.0f;
 }
 
-void printInstantPid(pid_t *pid) {
-    fprintf(log_filename, "%0.2f - %d - ", timeSinceStartTime(), *pid);
-    fflush(log_filename);
+void printInstantPid(pid_t *pid, char *temp) {
+    sprintf(temp, "%0.2f - %d - ", timeSinceStartTime(), *pid);
 }
 
 void printActionInfoCREATE(pid_t *pid, int argc, char *argv[]) {
-    printInstantPid(pid);
-    fprintf(log_filename, "CREATE - ");
+    char temp[10000]="";
+    printInstantPid(pid,temp);
+    strcat(temp,"CREATE - ");
     int i = 1;
     for (; i < argc - 1; i++) {
-        fprintf(log_filename, "%s,", argv[i]);
+        strcat(temp,argv[i]);
     }
-    fprintf(log_filename, "%s\n", argv[i]);
+    strcat(temp,argv[i]);
+    fprintf(log_filename,"%s\n",temp);
     fflush(log_filename);
 }
 
 void printActionInfoEXIT(pid_t *pid, int exit) {
-    printInstantPid(pid);
-    fprintf(log_filename, "EXIT - %i\n", exit);
+    char temp[10000]="";
+    printInstantPid(pid,temp);
+    sprintf(temp,"%sEXIT - %i",temp,exit);
+    fprintf(log_filename,"%s\n",temp);
     fflush(log_filename);
 }
 
 void printActionInfoRECV_SIGNAL(pid_t *pid, char *signal) {
-    printInstantPid(pid);
-    fprintf(log_filename, "RECV_SIGNAL - %s\n", signal);
+    char temp[10000]="";
+    printInstantPid(pid,temp);
+    sprintf(temp,"%sRECV_SIGNAL - %s",temp,signal);
+    fprintf(log_filename,"%s\n",temp);
     fflush(log_filename);
 }
 
 void printActionInfoSEND_SIGNAL(pid_t *pid, char *signal, pid_t destination) {
-    printInstantPid(pid);
-    fprintf(log_filename, "SEND_SIGNAL - %s \"%d\"\n", signal, destination);
+    char temp[10000]="";
+    printInstantPid(pid,temp);
+    sprintf(temp,"%sSEND_SIGNAL - %s \"%d\"",temp,signal, destination);
+    fprintf(log_filename,"%s\n",temp);
     fflush(log_filename);
 }
 
 void printActionInfoRECV_PIP(pid_t *pid, char *message) {
-    printInstantPid(pid);
-    fprintf(log_filename, "RECV_PIP - %s\n", message);
+    char temp[10000]="";
+    printInstantPid(pid,temp);
+    sprintf(temp,"%sRECV_PIP - %s",temp,message);
+    fprintf(log_filename,"%s\n",temp);
     fflush(log_filename);
 }
 
 void printActionInfoSEND_PIPE(pid_t *pid, char *message) {
-    printInstantPid(pid);
-    fprintf(log_filename, "SEND_PIPE - %s\n", message);
+    char temp[10000]="";
+    printInstantPid(pid,temp);
+    sprintf(temp,"%sSEND_PIPE - %s",temp,message);
+    fprintf(log_filename,"%s\n",temp);
     fflush(log_filename);
 }
 
 void printActionInfoENTRY(pid_t *pid, long long int bytes, char path[]) {
-    printInstantPid(pid);
-    fprintf(log_filename, "ENTRY - %lld %s\n", bytes, path);
+    char temp[10000]="";
+    printInstantPid(pid,temp);
+    sprintf(temp,"%sENTRY - %lld %s",temp,bytes, path);
+    fprintf(log_filename,"%s\n",temp);
     fflush(log_filename);
 }
 
@@ -396,6 +412,16 @@ long long int sizeAttribution(struct stat *temp) {
     return value;
 }
 
+char getLastItem(char *string){
+	char last;
+	for(unsigned i=0;;i++){
+		if((*string)==0)
+			break;
+		last=(*string);
+		string++;	
+	}
+	return last;
+} 
 
 /* Reads all files in a given directory and displays identically the way 'du' does */
 long long int seekdirec(char *currentdir, int depth) {
@@ -428,10 +454,10 @@ long long int seekdirec(char *currentdir, int depth) {
             printf("    [INFO] Directory '%s' was successfully loaded ....... OK!\n", workTable);
 
         while ((dira = readdir(d)) != NULL) {
-//            sleep(1);
 
             strcpy(workTable, currentdir);
-            strcat(workTable, "/");
+	    if(getLastItem(currentdir)!='/')
+            	strcat(workTable, "/");
             if (strcmp(dira->d_name, IGNORE_1) != 0 && strcmp(dira->d_name, IGNORE_2) != 0) {
                 if (!lstat(strcat(workTable, dira->d_name), &status)) {
                     //printf("modo: %i\n",status.st_mode);
@@ -454,7 +480,6 @@ long long int seekdirec(char *currentdir, int depth) {
                         num_fd++;
 			if(num_fd>10)
 				read_fd_arr(&pid_p, &size);
-
                     }
                         // If it is a link:
                     else if (S_ISLNK(status.st_mode)) {
@@ -595,6 +620,7 @@ void init(int argc, char *argv[], char directoryLine[MAX_SIZE]) {
     startTime = malloc(sizeof(struct timeval));
     gettimeofday(startTime, 0);
 
+    secc=*startTime;
     pgid = (int *) malloc(sizeof(int) * MAX_SIZE_ARR);
     num_pgid = 0;
 
