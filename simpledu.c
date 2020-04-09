@@ -150,48 +150,41 @@ void printActionInfoCREATE(pid_t *pid, int argc, char *argv[]) {
 void printActionInfoEXIT(pid_t *pid, int exit) {
     char temp[10000]="";
     printInstantPid(pid,temp);
-    sprintf(temp,"%sEXIT - %i",temp,exit);
-    fprintf(log_filename,"%s\n",temp);
-    fflush(log_filename);
+    fprintf(log_filename,"%sEXIT - %i\n",temp,exit);
 }
 
 void printActionInfoRECV_SIGNAL(pid_t *pid, char *signal) {
     char temp[10000]="";
     printInstantPid(pid,temp);
-    sprintf(temp,"%sRECV_SIGNAL - %s",temp,signal);
-    fprintf(log_filename,"%s\n",temp);
+    fprintf(log_filename,"%sRECV_SIGNAL - %s\n",temp,signal);
     fflush(log_filename);
 }
 
 void printActionInfoSEND_SIGNAL(pid_t *pid, char *signal, pid_t destination) {
     char temp[10000]="";
     printInstantPid(pid,temp);
-    sprintf(temp,"%sSEND_SIGNAL - %s \"%d\"",temp,signal, destination);
-    fprintf(log_filename,"%s\n",temp);
+    fprintf(log_filename,"%sSEND_SIGNAL - %s \"%d\"\n",temp,signal, destination);
     fflush(log_filename);
 }
 
 void printActionInfoRECV_PIP(pid_t *pid, char *message) {
     char temp[10000]="";
     printInstantPid(pid,temp);
-    sprintf(temp,"%sRECV_PIP - %s",temp,message);
-    fprintf(log_filename,"%s\n",temp);
+    fprintf(log_filename,"%sRECV_PIP - %s\n",temp,message);
     fflush(log_filename);
 }
 
 void printActionInfoSEND_PIPE(pid_t *pid, char *message) {
     char temp[10000]="";
     printInstantPid(pid,temp);
-    sprintf(temp,"%sSEND_PIPE - %s",temp,message);
-    fprintf(log_filename,"%s\n",temp);
+    fprintf(log_filename,"%sSEND_PIPE - %s\n",temp,message);
     fflush(log_filename);
 }
 
 void printActionInfoENTRY(pid_t *pid, long long int bytes, char path[]) {
     char temp[10000]="";
     printInstantPid(pid,temp);
-    sprintf(temp,"%sENTRY - %lld %s",temp,bytes, path);
-    fprintf(log_filename,"%s\n",temp);
+    fprintf(log_filename,"%sENTRY - %lld %s\n",temp,bytes, path);
     fflush(log_filename);
 }
 
