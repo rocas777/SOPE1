@@ -137,10 +137,12 @@ void printActionInfoCREATE(pid_t *pid, int argc, char *argv[]) {
     printInstantPid(pid,temp);
     strcat(temp,"CREATE - ");
     int i = 1;
-    for (; i < argc - 1; i++) {
-        strcat(temp,argv[i]);
+    if(argc>1){
+    	for (; i < argc - 1; i++) {
+       		strcat(temp,argv[i]);
+    	}
+    	strcat(temp,argv[i]);
     }
-    strcat(temp,argv[i]);
     fprintf(log_filename,"%s\n",temp);
     fflush(log_filename);
 }
@@ -443,7 +445,6 @@ long long int seekdirec(char *currentdir, int depth) {
     if (!lstat(workTable, &status)) {
         size += sizeAttribution(&status);
     }
-
     d = opendir(workTable);
 
     if (d == NULL) {
@@ -614,6 +615,7 @@ void init_flags(int argc, char *argv[], char directoryLine[MAX_SIZE]) {
             strcpy(directoryLine, argv[i]);
         }
     }
+    printf("%s\n",directoryLine);
 }
 
 void init(int argc, char *argv[], char directoryLine[MAX_SIZE]) {
@@ -636,6 +638,7 @@ void init(int argc, char *argv[], char directoryLine[MAX_SIZE]) {
 int main(int argc, char *argv[]) {
 
     char directoryLine[MAX_SIZE] = DIRECTORY;
+    printf("%s\n",directoryLine);
     init(argc, argv, directoryLine);
 
     seekdirec(directoryLine, tags.maxDepth_C);
