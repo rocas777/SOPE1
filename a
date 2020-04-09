@@ -1,0 +1,41 @@
+1c1,2
+< 14639740	/home/
+---
+> 1
+> 14713092	/home/
+550c551
+< 14194692	/home/miguel
+---
+> 14268044	/home/miguel
+579c580
+< 505160	/home/miguel/.cache
+---
+> 505168	/home/miguel/.cache
+683a685,686
+> 4	/home/miguel/.cache/dconf
+> 4	/home/miguel/.cache/doc
+2130a2134
+> 4	/home/miguel/.dbus
+2143c2147
+< 925884	/home/miguel/Documentos
+---
+> 999220	/home/miguel/Documentos
+2316,2318c2320,2322
+< 123328	/home/miguel/Documentos/faculdade
+< 123324	/home/miguel/Documentos/faculdade/2
+< 123320	/home/miguel/Documentos/faculdade/2/2
+---
+> 196664	/home/miguel/Documentos/faculdade
+> 196660	/home/miguel/Documentos/faculdade/2
+> 196656	/home/miguel/Documentos/faculdade/2/2
+2467c2471
+< 114484	/home/miguel/Documentos/faculdade/2/2/sope
+---
+> 187820	/home/miguel/Documentos/faculdade/2/2/sope
+2473c2477
+< 10608	/home/miguel/Documentos/faculdade/2/2/sope/SOPE1
+---
+> 15664	/home/miguel/Documentos/faculdade/2/2/sope/SOPE1
+11495a11500
+> 4	/home/miguel/.gvfs
+

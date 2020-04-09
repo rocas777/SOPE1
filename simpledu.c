@@ -31,8 +31,8 @@ int num_pgid; //number of process groups
 int **fd_arr; //pipe array
 int num_fd; //number of pipes
 
-struct  timeval *startTime; //Time of beginning of program
-struct  timeval secc;
+struct timeval *startTime; //Time of beginning of program
+struct timeval secc;
 
 FILE *log_filename; //File
 
@@ -62,11 +62,13 @@ void read_info_pipe(pid_t *pid_p, long long int *returned);
 
 void send_info_pipe(pid_t *pid_p, int fd_1, long long int *size);
 
-void wait_child(pid_t *pid_p);
+int wait_child(pid_t *pid_p);
 
 void close_fd_0(int fd);
 
 void close_fd_1(int fd);
+
+void delete_fd(pid_t *pid_p, int *fd);
 
 void printTags();
 
@@ -95,7 +97,7 @@ void init_child(pid_t *pid_p);
 
 double timeSinceStartTime();
 
-void printInstantPid(pid_t *pid,char *temp);
+void printInstantPid(pid_t *pid, char *temp);
 
 void printActionInfoCREATE(pid_t *pid, int argc, char *argv[]);
 
@@ -123,7 +125,7 @@ double timeSinceStartTime() //Returns time in milliseconds since begging of prog
     struct timeval instant;
     gettimeofday(&instant, 0);
 
-    *startTime=secc;
+    *startTime = secc;
 
     return (double) (instant.tv_sec - startTime->tv_sec) * 1000.0f + (instant.tv_usec - startTime->tv_usec) / 1000.0f;
 }
@@ -133,58 +135,59 @@ void printInstantPid(pid_t *pid, char *temp) {
 }
 
 void printActionInfoCREATE(pid_t *pid, int argc, char *argv[]) {
-    char temp[10000]="";
-    printInstantPid(pid,temp);
-    strcat(temp,"CREATE - ");
+    char temp[10000] = "";
+    printInstantPid(pid, temp);
+    strcat(temp, "CREATE - ");
     int i = 1;
-    if(argc>1){
-    	for (; i < argc - 1; i++) {
-       		strcat(temp,argv[i]);
-    	}
-    	strcat(temp,argv[i]);
+    if (argc > 1) {
+        for (; i < argc - 1; i++) {
+            strcat(temp, argv[i]);
+        }
+        strcat(temp, argv[i]);
     }
-    fprintf(log_filename,"%s\n",temp);
+    fprintf(log_filename, "%s\n", temp);
     fflush(log_filename);
 }
 
 void printActionInfoEXIT(pid_t *pid, int exit) {
-    char temp[10000]="";
-    printInstantPid(pid,temp);
-    fprintf(log_filename,"%sEXIT - %i\n",temp,exit);
+    char temp[10000] = "";
+    printInstantPid(pid, temp);
+    fprintf(log_filename, "%sEXIT - %i\n", temp, exit);
+    fflush(log_filename);
 }
 
 void printActionInfoRECV_SIGNAL(pid_t *pid, char *signal) {
-    char temp[10000]="";
-    printInstantPid(pid,temp);
-    fprintf(log_filename,"%sRECV_SIGNAL - %s\n",temp,signal);
+    char temp[10000] = "";
+    printInstantPid(pid, temp);
+    fprintf(log_filename, "%sRECV_SIGNAL - %s\n", temp, signal);
     fflush(log_filename);
 }
 
 void printActionInfoSEND_SIGNAL(pid_t *pid, char *signal, pid_t destination) {
-    char temp[10000]="";
-    printInstantPid(pid,temp);
-    fprintf(log_filename,"%sSEND_SIGNAL - %s \"%d\"\n",temp,signal, destination);
+    char temp[10000] = "";
+    printInstantPid(pid, temp);
+    fprintf(log_filename, "%sSEND_SIGNAL - %s \"%d\"\n", temp, signal, destination);
     fflush(log_filename);
 }
 
 void printActionInfoRECV_PIP(pid_t *pid, char *message) {
-    char temp[10000]="";
-    printInstantPid(pid,temp);
-    fprintf(log_filename,"%sRECV_PIP - %s\n",temp,message);
+    char temp[10000] = "";
+    printInstantPid(pid, temp);
+    fprintf(log_filename, "%sRECV_PIP - %s\n", temp, message);
     fflush(log_filename);
 }
 
 void printActionInfoSEND_PIPE(pid_t *pid, char *message) {
-    char temp[10000]="";
-    printInstantPid(pid,temp);
-    fprintf(log_filename,"%sSEND_PIPE - %s\n",temp,message);
+    char temp[10000] = "";
+    printInstantPid(pid, temp);
+    fprintf(log_filename, "%sSEND_PIPE - %s\n", temp, message);
     fflush(log_filename);
 }
 
 void printActionInfoENTRY(pid_t *pid, long long int bytes, char path[]) {
-    char temp[10000]="";
-    printInstantPid(pid,temp);
-    fprintf(log_filename,"%sENTRY - %lld %s\n",temp,bytes, path);
+    char temp[10000] = "";
+    printInstantPid(pid, temp);
+    fprintf(log_filename, "%sENTRY - %lld %s\n", temp, bytes, path);
     fflush(log_filename);
 }
 
@@ -200,7 +203,7 @@ long long int dereferenceLink(char *workTable, int depth) {
         sizeRep = sizeAttribution(&status);
         if (depth > 0) {
             printf("%lld\t%s\n", sizeRep, workTable);
-	    fflush(stdout);
+            fflush(stdout);
         }
         return sizeRep;
     } else {
@@ -293,13 +296,53 @@ void close_fd_1(int fd) {
     }
 }
 
-void wait_child(pid_t *pid_p) {
-    int status = -1;
-    while (status != 0) {
-        int pid = wait(&status);
-        printActionInfoEXIT(&pid, status);
+void delete_fd(pid_t *pid_p, int *fd) {
+    fflush(stdout);
+    if (pgid > 0) {
+        int i;
+        for (i = 0; i < num_pgid; i++) {
+            if (pgid[i] == *pid_p) {
+                break;
+            }
+        }
+
+        if (i < num_pgid) {
+            num_pgid--;
+//            num_fd--;
+            for (int j = i; j < num_pgid; j++) {
+                pgid[j] = pgid[j + 1];
+            }
+        }
     }
-    num_pgid--;
+    if (num_fd > 0) {
+        int i;
+        for (i = 0; i < num_fd; i++) {
+            if (fd_arr[i] == fd) {
+                break;
+            }
+        }
+
+        if (i < num_fd) {
+//            num_fd--;
+            for (int j = i; j < num_pgid; j++) {
+                fd_arr[j] = fd_arr[j + 1];
+            }
+        }
+    }
+}
+
+int wait_child(pid_t *pid_p) {
+    int status = -1;
+    int pid = 0;
+    int soma=0;
+    while (status != 0 && soma < 100) {
+        pid = wait(&status);
+	if(pid!=-1)
+        	printActionInfoEXIT(&pid, status);
+	else
+		soma++;
+    }
+    return pid;
 }
 
 void read_info_pipe(pid_t *pid_p, long long int *returned) {
@@ -315,13 +358,14 @@ void read_fd_arr(pid_t *pid_p, long long int *size) {
     while (num_fd > 0) {
         num_fd--;
 
-        wait_child(pid_p);
+        int pid = wait_child(pid_p);
 
         long long int returned = 0;
 
         read_info_pipe(pid_p, &returned);
 
         close_fd_0(fd_arr[num_fd][0]);
+        delete_fd(&pid, fd_arr[num_fd]);
 
         if (!tags.separatedirs_C) {
             *size += returned;
@@ -360,12 +404,10 @@ void createProcess(char *currentdir, int depth, int fd[2]) {
         exit(2);
     } else if (pid > 0) { /* pai */
         close_fd_1(fd[1]);
-
         if (num_pgid != -1) { // se não existir pai (thread principal)
             pgid[num_pgid] = pid;
             num_pgid++;
         }
-
     } else { /* filho */
         pid_t pid_p = getpid();
 
@@ -407,16 +449,16 @@ long long int sizeAttribution(struct stat *temp) {
     return value;
 }
 
-char getLastItem(char *string){
-	char last;
-	for(unsigned i=0;;i++){
-		if((*string)==0)
-			break;
-		last=(*string);
-		string++;	
-	}
-	return last;
-} 
+char getLastItem(char *string) {
+    char last;
+    for (unsigned i = 0;; i++) {
+        if ((*string) == 0)
+            break;
+        last = (*string);
+        string++;
+    }
+    return last;
+}
 
 /* Reads all files in a given directory and displays identically the way 'du' does */
 long long int seekdirec(char *currentdir, int depth) {
@@ -450,8 +492,8 @@ long long int seekdirec(char *currentdir, int depth) {
         while ((dira = readdir(d)) != NULL) {
 
             strcpy(workTable, currentdir);
-	    if(getLastItem(currentdir)!='/')
-            	strcat(workTable, "/");
+            if (getLastItem(currentdir) != '/')
+                strcat(workTable, "/");
             if (strcmp(dira->d_name, IGNORE_1) != 0 && strcmp(dira->d_name, IGNORE_2) != 0) {
                 if (!lstat(strcat(workTable, dira->d_name), &status)) {
                     //printf("modo: %i\n",status.st_mode);
@@ -472,8 +514,9 @@ long long int seekdirec(char *currentdir, int depth) {
 
                         createProcess(workTable, depth, fd);
                         num_fd++;
-			if(num_fd>10)
-				read_fd_arr(&pid_p, &size);
+                        if (num_fd > 10) {
+                            read_fd_arr(&pid_p, &size);
+                        }
                     }
                         // If it is a link:
                     else if (S_ISLNK(status.st_mode)) {
@@ -527,7 +570,7 @@ long long int seekdirec(char *currentdir, int depth) {
                         printf("    [FAILURE REPORT] Directory '%s' returned some error ....... ERROR!\n", workTable);
                 }
             }
-        }//fazer função wait processes e adiocionar aqui a informação
+        }
     }
 
     read_fd_arr(&pid_p, &size);
@@ -556,7 +599,7 @@ void init_log_file() {
     if ((log_filename = fopen("../LOG_FILENAME", "w")) == NULL) {
         int errsv = errno;
         printf("%d\n", errsv);
-	fflush(stdout);
+        fflush(stdout);
         perror(strerror(errsv));
         exit(1);
     }
@@ -608,14 +651,13 @@ void init_flags(int argc, char *argv[], char directoryLine[MAX_SIZE]) {
             strcpy(directoryLine, argv[i]);
         }
     }
-    printf("%s\n",directoryLine);
 }
 
 void init(int argc, char *argv[], char directoryLine[MAX_SIZE]) {
     startTime = malloc(sizeof(struct timeval));
     gettimeofday(startTime, 0);
 
-    secc=*startTime;
+    secc = *startTime;
     pgid = (int *) malloc(sizeof(int) * MAX_SIZE_ARR);
     num_pgid = 0;
 
@@ -631,7 +673,7 @@ void init(int argc, char *argv[], char directoryLine[MAX_SIZE]) {
 int main(int argc, char *argv[]) {
 
     char directoryLine[MAX_SIZE] = DIRECTORY;
-    printf("%s\n",directoryLine);
+
     init(argc, argv, directoryLine);
 
     seekdirec(directoryLine, tags.maxDepth_C);
@@ -640,3 +682,4 @@ int main(int argc, char *argv[]) {
 
     return 0;
 }
+
