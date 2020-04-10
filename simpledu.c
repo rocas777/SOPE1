@@ -548,7 +548,20 @@ long long int seekdirec(char *currentdir, int depth) {
 			  	  if (num_fd > 10) {
 					read_fd_arr(&pid_p, &size);
 			   	 }	
-			    }			
+			    }else if (S_ISREG(status.st_mode)) {
+                       		if (VERBOSE)
+                            		printf("    [INFO] Directory '%s' is a regular file ....... OK!\n", workTable);
+                        	size += sizeAttribution(&status);
+                        	if (depth > 0) {
+                            		long long int temporary = sizeAttribution(&status);
+                            		if (tags.allFiles_C) {
+                                		print(temporary, workTable);
+                            		}
+                            		printActionInfoENTRY(&pid_p, temporary, workTable);
+                        	}
+                    	    }
+			    
+			    		
                         }
                     }
                         // If it is a regular file:
