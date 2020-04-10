@@ -1,5 +1,5 @@
 CC=gcc
 CFLAGS=-I.
 
-main: simpledu.c
+simpledu: simpledu.c
 	$(CC) -o simpledu simpledu.c -Werror
