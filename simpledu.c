@@ -237,11 +237,13 @@ void sigintHandler(int sig) {
     }
 
     char i[2];
+	i[0] = -1;
     while (i[0] != '0' && i[0] != '1') {
         printf("0 - Continue \n1 - Terminate Program\n\n");
 	fflush(stdout);
         read(0, i, 2);
     }
+
 
     if (i[0] == '0') {
         if (num_pgid != 0) {
@@ -327,7 +329,7 @@ void delete_fd(pid_t *pid_p, int *fd) {
 
         if (i < num_fd) {
 //            num_fd--;
-            for (int j = i; j < num_pgid; j++) {
+            for (int j = i; j < num_fd; j++) {
                 fd_arr[j] = fd_arr[j + 1];
             }
         }
@@ -574,9 +576,7 @@ long long int seekdirec(char *currentdir, int depth) {
 					if(lf_exists)
                             		printActionInfoENTRY(&pid_p, temporary, workTable);
                         	}
-                    	    }
-			    
-			    		
+                    	    }		
                         }
                     }
                         // If it is a regular file:
