@@ -208,7 +208,7 @@ long long int dereferenceLink(char *workTable, int depth) {
         return sizeRep;
     } else {
         perror("(dereferenceLink) Failure to access path : ");
-        return -1;
+        return 0;
     }
 }
 
@@ -536,6 +536,20 @@ long long int seekdirec(char *currentdir, int depth) {
                         } else {
                             // Considers the referenced file!
                             size += dereferenceLink(workTable, depth);
+
+
+			    if (pipe(fd_arr[num_fd]) < 0) {
+                            	fprintf(stderr, "pipe error\n");
+                            	exit(1);
+                            }
+			    int *fd;
+			    fd = fd_arr[num_fd];
+
+			    createProcess(workTable, depth, fd);
+			    num_fd++;
+			    if (num_fd > 10) {
+				read_fd_arr(&pid_p, &size);
+			    }				
                         }
                     }
                         // If it is a regular file:
