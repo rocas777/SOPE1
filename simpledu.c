@@ -201,10 +201,6 @@ long long int dereferenceLink(char *workTable, int depth) {
     readlink(workTable, megaPath, MAX_SIZE - 1);
     if (!lstat(megaPath, &status)) {
         sizeRep = sizeAttribution(&status);
-        if (depth > 0) {
-            printf("%lld\t%s\n", sizeRep, workTable);
-            fflush(stdout);
-        }
         return sizeRep;
     } else {
         perror("(dereferenceLink) Failure to access path : ");
@@ -477,7 +473,7 @@ long long int seekdirec(char *currentdir, int depth) {
     long long int size = 0;
 
     // First step: Attribute base size of the directory
-    if (!lstat(workTable, &status)) {
+    if (!stat(workTable, &status)) {
         size += sizeAttribution(&status);
     }
     d = opendir(workTable);
@@ -535,21 +531,24 @@ long long int seekdirec(char *currentdir, int depth) {
                             size += sizeAttribution(&status);
                         } else {
                             // Considers the referenced file!
-                            size += dereferenceLink(workTable, depth);
+                            //size += dereferenceLink(workTable, depth);
+			    stat(workTable, &status);
+			    if(S_ISDIR(status.st_mode)){
+        			//size += sizeAttribution(&status);
+			    	if (pipe(fd_arr[num_fd]) < 0) {
+                          	  	fprintf(stderr, "pipe error\n");
+                          	  	exit(1);
+                          	  }
+			 	   int *fd;
+			  	  fd = fd_arr[num_fd];
 
-
-			    if (pipe(fd_arr[num_fd]) < 0) {
-                            	fprintf(stderr, "pipe error\n");
-                            	exit(1);
-                            }
-			    int *fd;
-			    fd = fd_arr[num_fd];
-
-			    createProcess(workTable, depth, fd);
-			    num_fd++;
-			    if (num_fd > 10) {
-				read_fd_arr(&pid_p, &size);
-			    }				
+			  	  createProcess(workTable, depth, fd);
+				  //fprintf(stderr,"%s\n",workTable);
+			  	  num_fd++;
+			  	  if (num_fd > 10) {
+					read_fd_arr(&pid_p, &size);
+			   	 }	
+			    }			
                         }
                     }
                         // If it is a regular file:
