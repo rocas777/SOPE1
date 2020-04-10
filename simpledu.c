@@ -34,7 +34,8 @@ int num_fd; //number of pipes
 struct timeval *startTime; //Time of beginning of program
 struct timeval secc;
 
-FILE *log_filename; //File
+FILE *log_filename;
+int8_t lf_exists=0; //File
 
 /* Global variables: Used the dictate the flags */
 
@@ -86,11 +87,11 @@ void initSigactionSIG_IGN();
 
 void init_fd_arr();
 
-void init_log_file();
+void init_log_file(char* envp[]);
 
-void init_flags(int argc, char *argv[], char directoryLine[MAX_SIZE]);
+int init_flags(int argc, char *argv[], char directoryLine[MAX_SIZE]);
 
-void init(int argc, char *argv[], char directoryLine[MAX_SIZE]);
+int init(int argc, char *argv[], char directoryLine[MAX_SIZE],char* envp[]);
 
 void init_child(pid_t *pid_p);
 
@@ -224,10 +225,12 @@ void printTags() {
 void sigintHandler(int sig) {
     pid_t pid = getpid();
 
+    if(lf_exists)
     printActionInfoRECV_SIGNAL(&pid, "SIGINT");
 
     if (num_pgid != 0) {
         for (int n = 0; n < num_pgid; n++) {
+	    if(lf_exists)
             printActionInfoSEND_SIGNAL(&pid, "SIGSTOP", -pgid[n]);
             kill(-pgid[n], SIGSTOP);
         }
@@ -242,6 +245,7 @@ void sigintHandler(int sig) {
     if (i[0] == '0') {
         if (num_pgid != 0) {
             for (int n = 0; n < num_pgid; n++) {
+		if(lf_exists)
                 printActionInfoSEND_SIGNAL(&pid, "SIGCONT", -pgid[n]);
                 kill(-pgid[n], SIGCONT);
             }
@@ -249,10 +253,12 @@ void sigintHandler(int sig) {
     } else {
         if (num_pgid != 0) {
             for (int n = 0; n < num_pgid; n++) {
+		if(lf_exists)
                 printActionInfoSEND_SIGNAL(&pid, "SIGTERM", -pgid[n]);
                 kill(-pgid[n], SIGTERM);
             }
         }
+	if(lf_exists)
         printActionInfoSEND_SIGNAL(&pid, "SIGTERM", pid);
         kill(pid, SIGTERM);
     }
@@ -333,8 +339,10 @@ int wait_child(pid_t *pid_p) {
     int soma=0;
     while (status != 0 && soma < 100) {
         pid = wait(&status);
-	if(pid!=-1)
-        	printActionInfoEXIT(&pid, status);
+	if(pid!=-1){
+		if(lf_exists)
+        		printActionInfoEXIT(&pid, status);
+	}
 	else
 		soma++;
     }
@@ -346,7 +354,8 @@ void read_info_pipe(pid_t *pid_p, long long int *returned) {
     memset(digitsre, '\0', DIGITS_MAX);
 
     read(fd_arr[num_fd][0], digitsre, DIGITS_MAX);
-    printActionInfoRECV_PIP(pid_p, digitsre);
+    if(lf_exists)
+    	printActionInfoRECV_PIP(pid_p, digitsre);
     *returned = atoll(digitsre);
 }
 
@@ -375,7 +384,8 @@ void send_info_pipe(pid_t *pid_p, int fd_1, long long int *size) {
 
     sprintf(digitsre, "%lld", *size);
     write(fd_1, digitsre, strlen(digitsre));
-    printActionInfoSEND_PIPE(pid_p, digitsre);
+    if(lf_exists)
+    	printActionInfoSEND_PIPE(pid_p, digitsre);
 }
 
 void init_child(pid_t *pid_p) {
@@ -387,7 +397,9 @@ void init_child(pid_t *pid_p) {
         setpgrp(); // cria novo grupo de processos para o filho e filhos deste
     }
     num_pgid = -1;
-    printActionInfoCREATE(pid_p, argcG, argvG);
+
+    if(lf_exists)
+    	printActionInfoCREATE(pid_p, argcG, argvG);
 }
 
 /* Creates a process. */
@@ -526,6 +538,7 @@ long long int seekdirec(char *currentdir, int depth) {
                                     //printf("[%d]\t", depth);
                                     print(temporary, workTable);
                                 }
+				if(lf_exists)
                                 printActionInfoENTRY(&pid_p, temporary, workTable);
                             }
                             size += sizeAttribution(&status);
@@ -557,6 +570,7 @@ long long int seekdirec(char *currentdir, int depth) {
                             		if (tags.allFiles_C) {
                                 		print(temporary, workTable);
                             		}
+					if(lf_exists)
                             		printActionInfoENTRY(&pid_p, temporary, workTable);
                         	}
                     	    }
@@ -577,6 +591,7 @@ long long int seekdirec(char *currentdir, int depth) {
                                 //printf("file: %li\n",status.st_size);
                                 print(temporary, workTable);
                             }
+			    if(lf_exists)
                             printActionInfoENTRY(&pid_p, temporary, workTable);
                         }
                     } else {
@@ -588,6 +603,7 @@ long long int seekdirec(char *currentdir, int depth) {
                             if (tags.allFiles_C) {
                                 print(temporary, workTable);
                             }
+			    if(lf_exists)
                             printActionInfoENTRY(&pid_p, temporary, workTable);
                         }
                     }
@@ -606,6 +622,7 @@ long long int seekdirec(char *currentdir, int depth) {
 
     if (depth >= 0) {
         print(size, workTable);
+	if(lf_exists)
         printActionInfoENTRY(&pid_p, size, workTable);
     }
 
@@ -621,17 +638,31 @@ void init_fd_arr() {
     num_fd = 0;
 }
 
-void init_log_file() {
-    if ((log_filename = fopen("../LOG_FILENAME", "w")) == NULL) {
-        int errsv = errno;
-        printf("%d\n", errsv);
-        fflush(stdout);
-        perror(strerror(errsv));
-        exit(1);
+void init_log_file(char* envp[]) {
+    char *beg;
+    char *logfilename=malloc(sizeof(char)*1000);
+
+    for (int i = 0; envp[i] != NULL; i++){
+    	if((beg=strstr(envp[i], "LOG_FILENAME")) != NULL) {
+		//sprintf(logfilename,"%s",envp[i]);
+		logfilename = getenv("LOG_FILENAME");	
+		lf_exists=1;
+		break;		
+	}
+    }
+
+    if(lf_exists==1){
+    	if ((log_filename = fopen(logfilename, "w")) == NULL) {
+    	    int errsv = errno;
+    	    printf("%d\n", errsv);
+    	    fflush(stdout);
+    	    perror(strerror(errsv));
+    	    exit(1);
+    	}
     }
 }
 
-void init_flags(int argc, char *argv[], char directoryLine[MAX_SIZE]) {
+int init_flags(int argc, char *argv[], char directoryLine[MAX_SIZE]) {
     tags.maxDepth_C = CUSTOM_INF;
     tags.countLink_C = 1;
     tags.blockSize_C = 1024;
@@ -677,9 +708,18 @@ void init_flags(int argc, char *argv[], char directoryLine[MAX_SIZE]) {
             strcpy(directoryLine, argv[i]);
         }
     }
+    
+	struct stat sb;
+	if (!(stat(directoryLine, &sb) == 0 && S_ISDIR(sb.st_mode))){
+		printf("%s\n",directoryLine);
+		fflush(stdout);
+		return 1;
+	}
+	else
+		return 0;
 }
 
-void init(int argc, char *argv[], char directoryLine[MAX_SIZE]) {
+int init(int argc, char *argv[], char directoryLine[MAX_SIZE],char* envp[]) {
     startTime = malloc(sizeof(struct timeval));
     gettimeofday(startTime, 0);
 
@@ -691,20 +731,27 @@ void init(int argc, char *argv[], char directoryLine[MAX_SIZE]) {
 
     initSigaction();
 
-    init_log_file();
+    init_log_file(envp);
 
-    init_flags(argc, argv, directoryLine);
+    if(init_flags(argc, argv, directoryLine))
+	return 1;
+    return 0;
 }
 
-int main(int argc, char *argv[]) {
+int main(int argc, char *argv[],char * envp[]) {
 
     char directoryLine[MAX_SIZE] = DIRECTORY;
 
-    init(argc, argv, directoryLine);
+    if(init(argc, argv, directoryLine,envp)){
+	printf("Flags ou Diretorio de pesquisa não existentes\n");
+	printf("Uso: simpledu -l [path] [-a] [-b] [-B size] [-L] [-S] [--max-depth=N]\n");
+	exit(1);
+    }
 
     seekdirec(directoryLine, tags.maxDepth_C);
 
-    fclose(log_filename);
+    if(lf_exists)
+    	fclose(log_filename);
 
     return 0;
 }
