@@ -313,7 +313,6 @@ void delete_fd(pid_t *pid_p, int *fd) {
 
         if (i < num_pgid) {
             num_pgid--;
-//            num_fd--;
             for (int j = i; j < num_pgid; j++) {
                 pgid[j] = pgid[j + 1];
             }
@@ -328,7 +327,6 @@ void delete_fd(pid_t *pid_p, int *fd) {
         }
 
         if (i < num_fd) {
-//            num_fd--;
             for (int j = i; j < num_fd; j++) {
                 fd_arr[j] = fd_arr[j + 1];
             }
@@ -507,9 +505,6 @@ long long int seekdirec(char *currentdir, int depth) {
                 strcat(workTable, "/");
             if (strcmp(dira->d_name, IGNORE_1) != 0 && strcmp(dira->d_name, IGNORE_2) != 0) {
                 if (!lstat(strcat(workTable, dira->d_name), &status)) {
-                    //printf("modo: %i\n",status.st_mode);
-                    //printf("modo: %li\n",status.st_size);
-                    // [DEBUG] printf("Cycle loaded by process id: %d -- (%s)!\n", getpid(), workTable);
                     // If it is a directory:
                     if (S_ISDIR(status.st_mode)) {
                         if (VERBOSE)
@@ -538,7 +533,6 @@ long long int seekdirec(char *currentdir, int depth) {
                             if (depth > 0) {
                                 long long int temporary = sizeAttribution(&status);
                                 if (tags.allFiles_C) {
-                                    //printf("[%d]\t", depth);
                                     print(temporary, workTable);
                                 }
 				if(lf_exists)
@@ -547,10 +541,8 @@ long long int seekdirec(char *currentdir, int depth) {
                             size += sizeAttribution(&status);
                         } else {
                             // Considers the referenced file!
-                            //size += dereferenceLink(workTable, depth);
 			    stat(workTable, &status);
 			    if(S_ISDIR(status.st_mode)){
-        			//size += sizeAttribution(&status);
 			    	if (pipe(fd_arr[num_fd]) < 0) {
                           	  	fprintf(stderr, "pipe error\n");
                           	  	exit(1);
@@ -559,7 +551,6 @@ long long int seekdirec(char *currentdir, int depth) {
 			  	  fd = fd_arr[num_fd];
 
 			  	  createProcess(workTable, depth, fd);
-				  //fprintf(stderr,"%s\n",workTable);
 			  	  num_fd++;
 			  	  if (num_fd > 10) {
 					read_fd_arr(&pid_p, &size);
@@ -587,9 +578,6 @@ long long int seekdirec(char *currentdir, int depth) {
                         if (depth > 0) {
                             long long int temporary = sizeAttribution(&status);
                             if (tags.allFiles_C) {
-                                //printf("[%d]\t", depth);
-                                //printf("acom: %lli\n",size);
-                                //printf("file: %li\n",status.st_size);
                                 print(temporary, workTable);
                             }
 			    if(lf_exists)
@@ -645,7 +633,6 @@ void init_log_file(char* envp[]) {
 
     for (int i = 0; envp[i] != NULL; i++){
     	if((beg=strstr(envp[i], "LOG_FILENAME")) != NULL) {
-		//sprintf(logfilename,"%s",envp[i]);
 		logfilename = getenv("LOG_FILENAME");	
 		lf_exists=1;
 		break;		
