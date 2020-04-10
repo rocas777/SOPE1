@@ -1,0 +1,7 @@
+T2G08
+
+Todas as features descritas no enunciado Foram implementadas. No existem alguns problemas tais como:
+
+	-A utilização de sinais está implementada no entanto, em cada execução, apenas a primeira interrupção funciona a 100%, ao tentar interromper o programa uma segunda vez pode pode por haver erros tais como o programa parar( para continuar basta premir ctrl + c), ou a interrupção pode ser ignorada.
+
+	-Caso existam muitas pastas e ficheiros a pesquisar, o programa pode tentar criar mais processos do que deveria, para resolver este problema limitámos o numero de subprocessos que cada processo pai pode correr de cada vez para 10.

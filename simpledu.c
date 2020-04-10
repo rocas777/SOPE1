@@ -226,12 +226,12 @@ void sigintHandler(int sig) {
     pid_t pid = getpid();
 
     if(lf_exists)
-    printActionInfoRECV_SIGNAL(&pid, "SIGINT");
+    	printActionInfoRECV_SIGNAL(&pid, "SIGINT");
 
     if (num_pgid != 0) {
         for (int n = 0; n < num_pgid; n++) {
 	    if(lf_exists)
-            printActionInfoSEND_SIGNAL(&pid, "SIGSTOP", -pgid[n]);
+            	printActionInfoSEND_SIGNAL(&pid, "SIGSTOP", -pgid[n]);
             kill(-pgid[n], SIGSTOP);
         }
     }
@@ -239,6 +239,7 @@ void sigintHandler(int sig) {
     char i[2];
     while (i[0] != '0' && i[0] != '1') {
         printf("0 - Continue \n1 - Terminate Program\n\n");
+	fflush(stdout);
         read(0, i, 2);
     }
 
@@ -246,7 +247,7 @@ void sigintHandler(int sig) {
         if (num_pgid != 0) {
             for (int n = 0; n < num_pgid; n++) {
 		if(lf_exists)
-                printActionInfoSEND_SIGNAL(&pid, "SIGCONT", -pgid[n]);
+                	printActionInfoSEND_SIGNAL(&pid, "SIGCONT", -pgid[n]);
                 kill(-pgid[n], SIGCONT);
             }
         }
@@ -254,12 +255,12 @@ void sigintHandler(int sig) {
         if (num_pgid != 0) {
             for (int n = 0; n < num_pgid; n++) {
 		if(lf_exists)
-                printActionInfoSEND_SIGNAL(&pid, "SIGTERM", -pgid[n]);
+                	printActionInfoSEND_SIGNAL(&pid, "SIGTERM", -pgid[n]);
                 kill(-pgid[n], SIGTERM);
             }
         }
 	if(lf_exists)
-        printActionInfoSEND_SIGNAL(&pid, "SIGTERM", pid);
+        	printActionInfoSEND_SIGNAL(&pid, "SIGTERM", pid);
         kill(pid, SIGTERM);
     }
 }
@@ -650,7 +651,6 @@ void init_log_file(char* envp[]) {
 		break;		
 	}
     }
-
     if(lf_exists==1){
     	if ((log_filename = fopen(logfilename, "w")) == NULL) {
     	    int errsv = errno;
