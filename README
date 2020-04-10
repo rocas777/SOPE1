@@ -1,5 +1,15 @@
 T2G08
 
-Todas as features descritas no enunciado Foram implementadas. No existem alguns problemas tais como:
+Todas as funcionalidades descritas no enunciado foram implementadas. 
 
-	-Caso existam muitas pastas e ficheiros a pesquisar, o programa pode tentar criar mais processos do que deveria, para resolver este problema limitámos o numero de subprocessos que cada processo pai pode correr de cada vez para 10.
+O programa é paralelizado.
+O tamanho total de cada um dos subdiretórios é comunicado ao processo-pai através de um pipe(sem nome)criado para cada um dos processos-filho.
+O  processo-pai (processo-principal) envia um sinal SIGSTOP a todos os processos-filho que estiverem em execução quando receber um sinal SIGINT. O envio do sinal seguinte depende da confirmação (SIGTERM) ou não (SIGCONT) por parte do utilizador relativamente à terminação do programa. Para fazer isto, cada filho torna-se leader de um process group novo para filhos deste.
+
+O pai guarda os process group id (pgid) e pipe de cada filho e vai atualizando os array de pgid e de pipes quando cada filho acaba. Assim só é preciso enviar um sinal para cada filho do processo principal.
+
+
+No entanto, existem alguns problemas tais como:
+
+	-Caso existam muitas pastas e ficheiros a pesquisar, o programa pode estar a atingir o número máximo de processos que pode lançar (imposto pelo kernel), para resolver este problema limitámos o número de subprocessos que cada processo pai pode correr de cada vez para 10.
+	
